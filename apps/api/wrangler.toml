@@ -1,0 +1,214 @@
+name = "textral-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+
+# Persist worker logs to the dashboard for ~3 days. Critical for diagnosing
+# failures after the fact (matches landlord-contracts reference repo).
+[observability]
+enabled = true
+head_sampling_rate = 1.0
+
+# A bare `wrangler deploy` (no --env) is intentionally non-functional:
+# the top-level config has no bindings or routes. Always use --env dev
+# or --env prod.
+
+# ── test ────────────────────────────────────────────────────────────────
+# Used by vitest-pool-workers (see vitest.config.ts). Bindings are kept
+# minimal: no Secrets Store, no AI Gateway. Plain-string env vars stand in
+# for what would be real bindings in dev/prod, so the helpers in
+# src/auth/pepper.ts and similar can read them transparently.
+#
+# Vectorize is omitted in test (no local emulation; Phase 4 tests stub
+# it explicitly). Containers / queues are also omitted; jobs are tested
+# via direct unit calls.
+[env.test]
+name = "textral-api-test"
+workers_dev = false
+
+[env.test.vars]
+ENV = "dev"
+ENABLE_DEBUG_ROUTES = "true"
+ALLOWED_ORIGINS = "http://localhost:5173"
+CF_ACCOUNT_ID = "test-account-id"
+AI_GATEWAY_ID = "textral-test"
+# Tests bypass AI Gateway by default — outbound HTTP is `vi.stubGlobal`-mocked
+# and we don't want the gateway URL to appear in fixtures.
+AI_GATEWAY_BYPASS = "true"
+# Plain-string pepper; readPepper(env) accepts string-or-binding shapes.
+API_KEY_PEPPER = "test-pepper-do-not-use-in-prod"
+INTERNAL_HMAC_SECRET = "test-internal-hmac-secret-do-not-use-in-prod"
+AUDIT_HASH_SALT = "test-audit-salt"
+# V3 Phase 1 — vector backend config. Tests don't hit external services,
+# but the `vector_backend='qdrant'` / `'pinecone'` selectors check these
+# vars before constructing an adapter; tests for those code paths inject
+# values per-case via `(env as ...).QDRANT_URL = ...`.
+QDRANT_URL = ""
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "textral-test"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations/sqlite"
+
+[[env.test.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "textral-blobs-test"
+
+[[env.test.kv_namespaces]]
+binding = "CACHE"
+id = "test-cache-id"
+
+[[env.test.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "textral-ingest-test"
+
+# ── prod ────────────────────────────────────────────────────────────────
+[env.prod]
+name = "textral-api"
+workers_dev = false
+preview_urls = false
+
+[env.prod.vars]
+ENV = "prod"
+ENABLE_DEBUG_ROUTES = "false"
+ALLOWED_ORIGINS = "https://textral.example.com"
+CF_ACCOUNT_ID = "e2446fe227a630d5dd70c40c33456f1f"
+AI_GATEWAY_ID = "textral-prod"
+AI_GATEWAY_BYPASS = "false"
+# V3 Phase 1 — Qdrant base URL. Self-host Qdrant Cloud URL goes here;
+# secrets (`QDRANT_API_KEY`, `PINECONE_API_KEY`) via `wrangler secret put`.
+QDRANT_URL = ""
+
+[[env.prod.d1_databases]]
+binding = "DB"
+database_name = "textral-prod"
+database_id = "<PASTE_PROD_D1_UUID_HERE>"
+migrations_dir = "migrations/sqlite"
+
+[[env.prod.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "textral-blobs-prod"
+
+[[env.prod.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "textral-ingest-prod"
+
+# Prod queue consumer binding. Mirror of dev. Provision the prod
+# textral-ingest-prod + textral-ingest-prod-dlq queues before deploying.
+[[env.prod.queues.consumers]]
+queue = "textral-ingest-prod"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "textral-ingest-prod-dlq"
+
+[[env.prod.vectorize]]
+binding = "VECTORIZE_OPENAI_LARGE"
+index_name = "textral-prod-openai-text-embedding-3-large-1536-cosine"
+
+[[env.prod.kv_namespaces]]
+binding = "CACHE"
+id = "<PASTE_PROD_KV_ID_HERE>"
+
+# API_KEY_PEPPER is a Worker secret (set via `wrangler secret put`) for now.
+# See env.dev block for rationale.
+
+[env.prod.ai]
+binding = "AI"
+
+[[env.prod.containers]]
+class_name = "IngestContainer"
+image = "../ingest/Dockerfile"
+max_instances = 5
+instance_type = "standard-1"
+
+[[env.prod.durable_objects.bindings]]
+class_name = "IngestContainer"
+name = "INGEST_CONTAINER"
+
+[[env.prod.migrations]]
+tag = "v1"
+new_sqlite_classes = ["IngestContainer"]
+
+# ── dev ─────────────────────────────────────────────────────────────────
+[env.dev]
+name = "textral-api-dev"
+workers_dev = true
+preview_urls = false
+
+[env.dev.vars]
+ENV = "dev"
+ENABLE_DEBUG_ROUTES = "true"
+ALLOWED_ORIGINS = "http://localhost:5173"
+CF_ACCOUNT_ID = "e2446fe227a630d5dd70c40c33456f1f"
+AI_GATEWAY_ID = "textral-dev"
+AI_GATEWAY_BYPASS = "false"
+# Container → Worker back-channel base URL. Set to the workers.dev URL
+# the deploy resolves to. Update if the Worker name changes.
+WORKER_INTERNAL_URL = "https://textral-api-dev.leif-e24.workers.dev"
+# V3 Phase 1 — Qdrant base URL. Empty disables the qdrant backend.
+# Set to "http://host.docker.internal:6333" when iterating against
+# `make dev-stack`-running Qdrant. PINECONE_API_KEY + QDRANT_API_KEY
+# go through `wrangler secret put` (not vars).
+QDRANT_URL = ""
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "textral-dev"
+database_id = "4c3debf1-7a78-45d3-9ce5-bebd33c84154"
+migrations_dir = "migrations/sqlite"
+
+[[env.dev.r2_buckets]]
+binding = "BLOBS"
+bucket_name = "textral-blobs-dev"
+# Browser Rendering / Vectorize / Containers have no local emulation, so
+# remote=true on bindings that need it. R2 emulates locally fine.
+
+[[env.dev.queues.producers]]
+binding = "INGEST_QUEUE"
+queue = "textral-ingest-dev"
+
+[[env.dev.queues.consumers]]
+queue = "textral-ingest-dev"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "textral-ingest-dev-dlq"
+
+[[env.dev.vectorize]]
+binding = "VECTORIZE_OPENAI_LARGE"
+index_name = "textral-dev-openai-text-embedding-3-large-1536-cosine"
+# Vectorize has no local emulation; tests stub it. `wrangler dev --remote`
+# can be used for end-to-end dev runs against the real index.
+
+[[env.dev.kv_namespaces]]
+binding = "CACHE"
+id = "eb98f42255a34892a3152e3fb33e7df3"
+
+# API_KEY_PEPPER, INTERNAL_HMAC_SECRET, AUDIT_HASH_SALT, ADMIN_BOOTSTRAP_TOKEN
+# are Worker secrets — `make bootstrap-secrets-dev` rotates all four.
+#
+# Provider keys (`pkey-{tenant}-{provider}-{label}`) live in Workers KV
+# under the `pkey/` prefix until a Secrets Store binding is provisioned;
+# the deploy-time API token doesn't yet have Secrets Store permission.
+# See SECRETS.md.
+
+[env.dev.ai]
+binding = "AI"
+
+[[env.dev.containers]]
+class_name = "IngestContainer"
+image = "../ingest/Dockerfile"
+max_instances = 3
+instance_type = "standard-1"
+
+[[env.dev.durable_objects.bindings]]
+class_name = "IngestContainer"
+name = "INGEST_CONTAINER"
+
+[[env.dev.migrations]]
+tag = "v1"
+new_sqlite_classes = ["IngestContainer"]

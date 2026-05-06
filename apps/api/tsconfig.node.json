@@ -1,0 +1,35 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    "rootDir": ".",
+    "noEmit": true,
+    "declaration": false,
+    "types": ["node", "@cloudflare/workers-types"]
+  },
+  "include": [
+    "src/runtime/node/**/*",
+    "src/runtime/shared/**/*",
+    "src/app.ts",
+    "src/routes/**/*",
+    "src/db/**/*",
+    "src/retrieval/**/*",
+    "src/ingestion/**/*",
+    "src/synthesis/**/*",
+    "src/audit/**/*",
+    "src/auth/**/*",
+    "src/observability/**/*",
+    "src/providers/**/*",
+    "src/eval/**/*",
+    "src/query/**/*",
+    "src/lib/**/*",
+    "src/middleware/**/*",
+    "src/openapi/**/*",
+    "src/types.ts",
+    "scripts/migrate-postgres.ts"
+  ],
+  "exclude": ["src/runtime/cf/**/*", "src/index.ts", "test/**/*", "node_modules"]
+}

@@ -1,0 +1,17 @@
+{
+  "namespace": "narrative",
+  "query": "Who calculated the circumference of the Earth?",
+  "embedding": {
+    "provider": "openai",
+    "model": "text-embedding-3-large",
+    "dimensions": 1536,
+    "provider_key_ref": "load-test"
+  },
+  "inference": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "provider_key_ref": "load-test"
+  },
+  "chunking": { "profile": "generic" },
+  "retrieval": { "strategy": "hybrid_rrf", "top_k_dense": 5, "top_k_sparse": 5 }
+}

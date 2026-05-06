@@ -1,0 +1,393 @@
+{
+  "generic_no_override": {
+    "id": "generic",
+    "description": "Passages-only fallback profile. No enrichment.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 600,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": false,
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage"
+      ],
+      "rerank": {
+        "enabled": false,
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 1
+      },
+      "layer_order": [
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are a helpful assistant answering questions from the provided context.\n"
+    }
+  },
+  "generic_chunking_target_bump": {
+    "id": "generic",
+    "description": "Passages-only fallback profile. No enrichment.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 1200,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": false,
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage"
+      ],
+      "rerank": {
+        "enabled": false,
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 1
+      },
+      "layer_order": [
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are a helpful assistant answering questions from the provided context.\n"
+    }
+  },
+  "narrative_disable_enrichment": {
+    "id": "narrative",
+    "description": "Long-form fiction. Multi-layer enrichment + rerank.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 700,
+      "overlap_tokens": 100,
+      "boundary_depth": 1
+    },
+    "enrichment": {
+      "enabled": false,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": [
+        {
+          "id": "section_summary",
+          "scope": "section",
+          "required": false,
+          "depends_on": [],
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.section_summary"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        },
+        {
+          "id": "scene",
+          "scope": "section",
+          "required": false,
+          "depends_on": [
+            "section_summary"
+          ],
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.scene"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        },
+        {
+          "id": "character_dossier",
+          "scope": "document",
+          "required": false,
+          "depends_on": [],
+          "model": {
+            "provider": "openai",
+            "model": "gpt-4o"
+          },
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.character_dossier"
+          ],
+          "max_input_tokens": 80000,
+          "oversize_strategy": "truncate"
+        },
+        {
+          "id": "theme",
+          "scope": "document",
+          "required": false,
+          "depends_on": [
+            "character_dossier"
+          ],
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.theme"
+          ],
+          "max_input_tokens": 60000,
+          "oversize_strategy": "truncate"
+        }
+      ]
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "narrative.section_summary",
+        "narrative.scene",
+        "narrative.character_dossier",
+        "narrative.theme"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 0.6,
+        "narrative.section_summary": 0.2,
+        "narrative.character_dossier": 0.2
+      },
+      "layer_order": [
+        "passage",
+        "narrative.section_summary",
+        "narrative.character_dossier"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering questions about a long narrative work. Cite the\nspecific chunk markers grounding your answer. Distinguish between\ndirect quotation, paraphrase, and analysis.\n"
+    }
+  },
+  "narrative_replace_passes_with_empty": {
+    "id": "narrative",
+    "description": "Long-form fiction. Multi-layer enrichment + rerank.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 700,
+      "overlap_tokens": 100,
+      "boundary_depth": 1
+    },
+    "enrichment": {
+      "enabled": true,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "narrative.section_summary",
+        "narrative.scene",
+        "narrative.character_dossier",
+        "narrative.theme"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 0.6,
+        "narrative.section_summary": 0.2,
+        "narrative.character_dossier": 0.2
+      },
+      "layer_order": [
+        "passage",
+        "narrative.section_summary",
+        "narrative.character_dossier"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering questions about a long narrative work. Cite the\nspecific chunk markers grounding your answer. Distinguish between\ndirect quotation, paraphrase, and analysis.\n"
+    }
+  },
+  "generic_rerank_on_top_n_5": {
+    "id": "generic",
+    "description": "Passages-only fallback profile. No enrichment.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 600,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": false,
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage"
+      ],
+      "rerank": {
+        "enabled": true,
+        "top_n": 5,
+        "provider": "voyage",
+        "model": "rerank-2"
+      },
+      "layer_budgets": {
+        "passage": 1
+      },
+      "layer_order": [
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are a helpful assistant answering questions from the provided context.\n"
+    }
+  },
+  "generic_artifact_types_extended": {
+    "id": "generic",
+    "description": "Passages-only fallback profile. No enrichment.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 600,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": false,
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "narrative.section_summary"
+      ],
+      "rerank": {
+        "enabled": false,
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 1
+      },
+      "layer_order": [
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are a helpful assistant answering questions from the provided context.\n"
+    }
+  },
+  "legal_layer_budgets_partial_merge": {
+    "id": "legal",
+    "description": "Contracts + leases. Clause-aware chunking.",
+    "chunking": {
+      "profile": "legal_clause_aware",
+      "target_tokens": 500,
+      "overlap_tokens": 50,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": true,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": [
+        {
+          "id": "clause_extraction",
+          "scope": "chunk",
+          "required": false,
+          "depends_on": [],
+          "artifact_namespace": "legal",
+          "produces": [
+            "legal.clause"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        },
+        {
+          "id": "obligation_extraction",
+          "scope": "document",
+          "required": false,
+          "depends_on": [
+            "clause_extraction"
+          ],
+          "artifact_namespace": "legal",
+          "produces": [
+            "legal.obligation"
+          ],
+          "max_input_tokens": 80000,
+          "oversize_strategy": "truncate"
+        }
+      ]
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "legal.clause",
+        "legal.obligation"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 0.4,
+        "legal.clause": 2,
+        "legal.obligation": 0.2
+      },
+      "layer_order": [
+        "legal.clause",
+        "legal.obligation",
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering questions about a legal document. Distinguish\ncontractual language from your own analysis. Cite the specific\nclause IDs that ground your answer.\n"
+    }
+  },
+  "generic_prompt_defaults_system_replace": {
+    "id": "generic",
+    "description": "Passages-only fallback profile. No enrichment.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 600,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": false,
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage"
+      ],
+      "rerank": {
+        "enabled": false,
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 1
+      },
+      "layer_order": [
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "Custom system prompt for tests."
+    }
+  }
+}

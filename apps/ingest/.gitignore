@@ -1,0 +1,8 @@
+# Build-time mirror from packages/corpus-profiles/profiles. `make build-ingest`
+# populates this before invoking wrangler containers build. Never commit it.
+profiles/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+.pytest_cache/

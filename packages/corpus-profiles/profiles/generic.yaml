@@ -1,0 +1,22 @@
+id: generic
+description: Passages-only fallback profile. No enrichment.
+chunking:
+  profile: generic
+  target_tokens: 600
+  overlap_tokens: 80
+  boundary_depth: 2
+enrichment:
+  enabled: false
+  passes: []
+retrieval_defaults:
+  strategy: hybrid_rrf
+  artifact_types: [passage]
+  rerank:
+    enabled: false
+    top_n: 12
+  layer_budgets:
+    passage: 1.0
+  layer_order: [passage]
+prompt_defaults:
+  system: |
+    You are a helpful assistant answering questions from the provided context.

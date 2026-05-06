@@ -1,0 +1,188 @@
+# V3 Phase 2 — full self-host stack.
+#
+# Six services: postgres, redis, qdrant, minio, api (Hono node-server),
+# ingest-worker (Redis BRPOP loop), ingest (Python container; same
+# image as the CF deploy). The api + ingest-worker share the api image
+# (different `command:` overrides). Bring up with:
+#
+#   docker compose -f infrastructure/docker/docker-compose.yml up -d --wait
+#
+# The api waits for postgres/redis/qdrant/minio to be healthy. The
+# ingest-worker waits for the api (which means migrations must have
+# been applied — operators run `make migrate-postgres-selfhost` once
+# before first start, or wire the api command to migrate-on-boot).
+#
+# Build context is the repo root (`../..`) so both the api Dockerfile
+# (apps/api/Dockerfile) and the ingest Dockerfile (apps/ingest/Dockerfile)
+# can reach the workspace files they need.
+#
+# Project name is pinned to `textral-selfhost` so containers/volumes/
+# networks/images are namespaced cleanly — without this, compose would
+# default to the parent directory name (`docker`), which collides with
+# any other project on the host that has a `docker/` compose subdir.
+# Service images that share a Dockerfile target (api + ingest-worker)
+# are tagged identically (`textral-selfhost-api:local`) so compose
+# builds them once and reuses the image; the two services differ only
+# in their `command:` override.
+
+name: textral-selfhost
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-textral}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-textral_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-textral}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-textral}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes: [qdrantdata:/qdrant/storage]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-textral}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-textral_dev}
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: create the blob bucket. Cloudflare R2 buckets are
+  # pre-provisioned by wrangler; self-host needs explicit creation
+  # because S3BlobStore assumes the bucket exists. `mc mb --ignore-
+  # existing` is idempotent, and the container exits 0 once the
+  # bucket is present — `service_completed_successfully` is the
+  # gate that lets api start.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-textral}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-textral_dev}
+      MINIO_BUCKET: ${MINIO_BUCKET:-textral-blobs}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        mc alias set local "$$MINIO_ENDPOINT" "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing "local/$$MINIO_BUCKET"
+
+  api:
+    image: textral-selfhost-api:local
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    command: ["node", "dist/runtime/node/index.mjs"]
+    ports: ["8787:8787"]
+    env_file: ../../.env.selfhost
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  ingest-worker:
+    # Same Dockerfile + target as `api` → identical image, different
+    # `command:`. Compose builds the image once when both services
+    # share the tag.
+    image: textral-selfhost-api:local
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    command: ["node", "dist/runtime/node/workers/ingest-consumer.mjs"]
+    env_file: ../../.env.selfhost
+    # Override the api's `/healthz` HTTP healthcheck inherited from
+    # the shared image — the consumer doesn't run an HTTP server.
+    # Liveness is just "the consumer's node process is up"; compose's
+    # restart policy handles crashes. Using `pidof node` (busybox-
+    # available; no procps dep) keeps the check cheap and honest.
+    healthcheck:
+      test: ["CMD-SHELL", "pidof node >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      api: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  ingest:
+    build:
+      context: ../../apps/ingest
+    env_file: ../../.env.selfhost
+    healthcheck:
+      # FastAPI route is `/healthz` (see apps/ingest/app/main.py),
+      # not `/health` — the dev compose carries the same correction.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      qdrant: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+
+  # V3 Phase 2.x — retrieval-quality sandbox UI. Static SPA built by
+  # vite, served by nginx. Same-origin proxy to api so the browser
+  # never sees CORS. Operator opens http://localhost:5173.
+  sandbox:
+    image: textral-selfhost-sandbox:local
+    build:
+      context: ../..
+      dockerfile: apps/sandbox/Dockerfile
+      target: runtime
+    ports: ["5173:5173"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5173/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  qdrantdata: {}
+  miniodata: {}
+
+networks:
+  default:
+    driver: bridge

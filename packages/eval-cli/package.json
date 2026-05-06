@@ -1,0 +1,23 @@
+{
+  "name": "@textral/eval-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "textral": "./bin/textral.mjs"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "echo 'eval-cli has no tests; covered by api integration'"
+  },
+  "dependencies": {
+    "@textral/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

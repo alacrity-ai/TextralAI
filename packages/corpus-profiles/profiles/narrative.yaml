@@ -1,0 +1,68 @@
+id: narrative
+description: Long-form fiction. Multi-layer enrichment + rerank.
+chunking:
+  profile: generic
+  target_tokens: 700
+  overlap_tokens: 100
+  boundary_depth: 1
+enrichment:
+  enabled: true
+  default_model:
+    provider: openai
+    model: gpt-4o-mini
+  passes:
+    - id: section_summary
+      scope: section
+      required: false
+      artifact_namespace: narrative
+      produces: [narrative.section_summary]
+    - id: scene
+      scope: section
+      required: false
+      depends_on: [section_summary]
+      artifact_namespace: narrative
+      produces: [narrative.scene]
+    - id: character_dossier
+      scope: document
+      required: false
+      artifact_namespace: narrative
+      produces: [narrative.character_dossier]
+      max_input_tokens: 80000
+      oversize_strategy: truncate
+      model:
+        provider: openai
+        model: gpt-4o
+    - id: theme
+      scope: document
+      required: false
+      depends_on: [character_dossier]
+      artifact_namespace: narrative
+      produces: [narrative.theme]
+      max_input_tokens: 60000
+      oversize_strategy: truncate
+retrieval_defaults:
+  strategy: hybrid_rrf
+  artifact_types:
+    - passage
+    - narrative.section_summary
+    - narrative.scene
+    - narrative.character_dossier
+    - narrative.theme
+  rerank:
+    enabled: true
+    provider: voyage
+    model: rerank-2
+    top_n: 12
+  layer_budgets:
+    passage: 0.6
+    narrative.section_summary: 0.2
+    narrative.character_dossier: 0.2
+  layer_order:
+    - passage
+    - narrative.section_summary
+    - narrative.character_dossier
+prompt_defaults:
+  system: |
+    You are answering questions about a long narrative work. Cite the
+    specific chunk markers grounding your answer. Distinguish between
+    direct quotation, paraphrase, and analysis.

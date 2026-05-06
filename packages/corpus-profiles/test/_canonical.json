@@ -1,0 +1,321 @@
+{
+  "generic": {
+    "id": "generic",
+    "description": "Passages-only fallback profile. No enrichment.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 600,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": false,
+      "passes": []
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage"
+      ],
+      "rerank": {
+        "enabled": false,
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 1
+      },
+      "layer_order": [
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are a helpful assistant answering questions from the provided context.\n"
+    }
+  },
+  "legal": {
+    "id": "legal",
+    "description": "Contracts + leases. Clause-aware chunking.",
+    "chunking": {
+      "profile": "legal_clause_aware",
+      "target_tokens": 500,
+      "overlap_tokens": 50,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": true,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": [
+        {
+          "id": "clause_extraction",
+          "scope": "chunk",
+          "required": false,
+          "depends_on": [],
+          "artifact_namespace": "legal",
+          "produces": [
+            "legal.clause"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        },
+        {
+          "id": "obligation_extraction",
+          "scope": "document",
+          "required": false,
+          "depends_on": [
+            "clause_extraction"
+          ],
+          "artifact_namespace": "legal",
+          "produces": [
+            "legal.obligation"
+          ],
+          "max_input_tokens": 80000,
+          "oversize_strategy": "truncate"
+        }
+      ]
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "legal.clause",
+        "legal.obligation"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 0.4,
+        "legal.clause": 0.4,
+        "legal.obligation": 0.2
+      },
+      "layer_order": [
+        "legal.clause",
+        "legal.obligation",
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering questions about a legal document. Distinguish\ncontractual language from your own analysis. Cite the specific\nclause IDs that ground your answer.\n"
+    }
+  },
+  "narrative": {
+    "id": "narrative",
+    "description": "Long-form fiction. Multi-layer enrichment + rerank.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 700,
+      "overlap_tokens": 100,
+      "boundary_depth": 1
+    },
+    "enrichment": {
+      "enabled": true,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": [
+        {
+          "id": "section_summary",
+          "scope": "section",
+          "required": false,
+          "depends_on": [],
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.section_summary"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        },
+        {
+          "id": "scene",
+          "scope": "section",
+          "required": false,
+          "depends_on": [
+            "section_summary"
+          ],
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.scene"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        },
+        {
+          "id": "character_dossier",
+          "scope": "document",
+          "required": false,
+          "depends_on": [],
+          "model": {
+            "provider": "openai",
+            "model": "gpt-4o"
+          },
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.character_dossier"
+          ],
+          "max_input_tokens": 80000,
+          "oversize_strategy": "truncate"
+        },
+        {
+          "id": "theme",
+          "scope": "document",
+          "required": false,
+          "depends_on": [
+            "character_dossier"
+          ],
+          "artifact_namespace": "narrative",
+          "produces": [
+            "narrative.theme"
+          ],
+          "max_input_tokens": 60000,
+          "oversize_strategy": "truncate"
+        }
+      ]
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "narrative.section_summary",
+        "narrative.scene",
+        "narrative.character_dossier",
+        "narrative.theme"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 0.6,
+        "narrative.section_summary": 0.2,
+        "narrative.character_dossier": 0.2
+      },
+      "layer_order": [
+        "passage",
+        "narrative.section_summary",
+        "narrative.character_dossier"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering questions about a long narrative work. Cite the\nspecific chunk markers grounding your answer. Distinguish between\ndirect quotation, paraphrase, and analysis.\n"
+    }
+  },
+  "support": {
+    "id": "support",
+    "description": "Customer-support knowledge bases. Step extraction.",
+    "chunking": {
+      "profile": "generic",
+      "target_tokens": 400,
+      "overlap_tokens": 60,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": true,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": [
+        {
+          "id": "troubleshooting_step",
+          "scope": "section",
+          "required": false,
+          "depends_on": [],
+          "artifact_namespace": "support",
+          "produces": [
+            "support.step"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        }
+      ]
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "support.step"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 8
+      },
+      "layer_budgets": {
+        "passage": 0.5,
+        "support.step": 0.5
+      },
+      "layer_order": [
+        "support.step",
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering customer-support questions. Prefer step-by-step\ninstructions when the corpus contains them. Cite the source.\n"
+    }
+  },
+  "technical": {
+    "id": "technical",
+    "description": "API docs + code references. Code-aware chunking.",
+    "chunking": {
+      "profile": "code_aware",
+      "target_tokens": 700,
+      "overlap_tokens": 80,
+      "boundary_depth": 2
+    },
+    "enrichment": {
+      "enabled": true,
+      "default_model": {
+        "provider": "openai",
+        "model": "gpt-4o-mini"
+      },
+      "passes": [
+        {
+          "id": "endpoint_reference",
+          "scope": "section",
+          "required": false,
+          "depends_on": [],
+          "artifact_namespace": "technical",
+          "produces": [
+            "technical.endpoint"
+          ],
+          "max_input_tokens": 100000,
+          "oversize_strategy": "map_reduce"
+        }
+      ]
+    },
+    "retrieval_defaults": {
+      "strategy": "hybrid_rrf",
+      "artifact_types": [
+        "passage",
+        "technical.endpoint"
+      ],
+      "rerank": {
+        "enabled": true,
+        "provider": "voyage",
+        "model": "rerank-2",
+        "top_n": 12
+      },
+      "layer_budgets": {
+        "passage": 0.6,
+        "technical.endpoint": 0.4
+      },
+      "layer_order": [
+        "technical.endpoint",
+        "passage"
+      ]
+    },
+    "prompt_defaults": {
+      "system": "You are answering technical / API questions. When the corpus\nincludes code or endpoint references, prefer those over prose.\n"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "narrative-baseline-v1",
+  "description": "Baseline eval set for the narrative-tiny.md fixture. Pairs with the Phase 5 narrative profile.",
+  "questions": [
+    {
+      "id": "q01",
+      "question": "Who calculated the circumference of the Earth?",
+      "expected_answer": "Eratosthenes."
+    },
+    {
+      "id": "q02",
+      "question": "Where did Hypatia teach?",
+      "expected_answer": "At the museum/library in Alexandria."
+    },
+    {
+      "id": "q03",
+      "question": "What method did Eratosthenes use to measure the Earth?",
+      "expected_answer": "He used the angle of shadows cast at noon in two different cities on the same day."
+    }
+  ]
+}

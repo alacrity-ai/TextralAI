@@ -1,0 +1,78 @@
+// Build the runtime-agnostic `Bindings` shape from a CF Worker
+// `Env`. Spreads the source env onto the result so legacy code that
+// reads `c.env.DB`, `c.env.BLOBS`, etc. keeps working through the
+// migration period (see `apps/api/src/types.ts` — Env extends
+// Bindings).
+
+import type { Env } from '../../types.js';
+import type {
+  Bindings,
+  VectorizeIndexHandle,
+  VectorStoreFactory,
+} from '../shared/interfaces.js';
+import { vectorStoreFor } from '../../retrieval/vector-store.js';
+import { D1Db } from './d1-db.js';
+import { R2BlobStore } from './r2-blob-store.js';
+import { CfKvStore } from './kv-store.js';
+import { CfQueueProducer } from './cf-queue.js';
+import { DoContainerInvoker } from './do-container-invoker.js';
+import { CfBackgroundTasks, NoopBackgroundTasks } from './bg-tasks.js';
+import { DigestStreamHasher } from './digest-stream-hasher.js';
+import { AeMetricsSink, NoopMetricsSink } from './ae-metrics.js';
+import { Fts5SparseSearch } from './fts5-sparse-search.js';
+
+export function buildCfBindings(env: Env, ctx: ExecutionContext | null): Env {
+  const factory: VectorStoreFactory = {
+    forBinding: (b) => vectorStoreFor(env, b),
+  };
+
+  const db = new D1Db(env.DB);
+  const newShape: Bindings = {
+    db,
+    blobs: new R2BlobStore(env.BLOBS),
+    kv: new CfKvStore(env.CACHE),
+    queue: new CfQueueProducer(env.INGEST_QUEUE),
+    vectors: factory,
+    sparseSearch: new Fts5SparseSearch(db),
+    containerInvoker: new DoContainerInvoker(env.INGEST_CONTAINER),
+    metrics: env.AE_METRICS ? new AeMetricsSink(env.AE_METRICS) : new NoopMetricsSink(),
+    bg: ctx ? new CfBackgroundTasks(ctx) : new NoopBackgroundTasks(),
+    hash: new DigestStreamHasher(),
+    runtime: 'cf',
+    ...(env.AI ? { ai: env.AI } : {}),
+    // Cast through `unknown`: the runtime-shared `VectorizeIndexHandle`
+    // declares a wider `filter?: unknown` parameter, which CF's
+    // `Vectorize.query(filter: VectorizeVectorMetadataFilter)` is not
+    // strict-function-type-assignable to (parameter contravariance).
+    // The values are structurally compatible at runtime — the cast
+    // bridges the variance gap between the structural shape and the
+    // narrower CF type.
+    ...(env.VECTORIZE_OPENAI_LARGE
+      ? { vectorize: env.VECTORIZE_OPENAI_LARGE as unknown as VectorizeIndexHandle }
+      : {}),
+    runtimeEnv: env.ENV,
+    apiKeyPepper: env.API_KEY_PEPPER,
+    ...(env.INTERNAL_HMAC_SECRET ? { internalHmacSecret: env.INTERNAL_HMAC_SECRET } : {}),
+    ...(env.ADMIN_BOOTSTRAP_TOKEN ? { adminBootstrapToken: env.ADMIN_BOOTSTRAP_TOKEN } : {}),
+    ...(env.AUDIT_HASH_SALT ? { auditHashSalt: env.AUDIT_HASH_SALT } : {}),
+    ...(env.WORKER_INTERNAL_URL ? { workerInternalUrl: env.WORKER_INTERNAL_URL } : {}),
+    ...(env.AI_GATEWAY_BYPASS !== 'true' && env.CF_ACCOUNT_ID && env.AI_GATEWAY_ID
+      ? {
+          aiGateway: {
+            baseUrl: `https://gateway.ai.cloudflare.com/v1/${env.CF_ACCOUNT_ID}/${env.AI_GATEWAY_ID}`,
+            metadataHeaderPrefix: 'cf-aig-' as const,
+            providerSegment: (p: string) =>
+              p === 'workers_ai' ? 'workers-ai' : p,
+          },
+        }
+      : {}),
+    ...(env.QDRANT_URL ? { qdrantUrl: env.QDRANT_URL } : {}),
+    ...(env.QDRANT_API_KEY ? { qdrantApiKey: env.QDRANT_API_KEY } : {}),
+    ...(env.PINECONE_API_KEY ? { pineconeApiKey: env.PINECONE_API_KEY } : {}),
+  };
+
+  // Spread the source env onto the new shape so legacy `c.env.DB` /
+  // `c.env.BLOBS` / etc. accessors keep working until each call site
+  // migrates to `c.env.db` / `c.env.blobs` / etc.
+  return { ...env, ...newShape } as Env;
+}

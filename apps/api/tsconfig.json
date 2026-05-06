@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers", "vite/client"],
+    "rootDir": ".",
+    "outDir": "dist",
+    "noEmit": true
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

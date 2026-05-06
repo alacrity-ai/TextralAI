@@ -1,0 +1,48 @@
+{
+  "name": "@textral/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --env dev",
+    "deploy:dev": "wrangler deploy --env dev",
+    "deploy:prod": "wrangler deploy --env prod",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:node": "vitest run --config vitest.node.config.ts",
+    "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
+    "build:node": "rm -rf dist && esbuild src/runtime/node/index.ts src/runtime/node/workers/ingest-consumer.ts --bundle --platform=node --target=node24 --format=esm --outbase=src --outdir=dist --out-extension:.js=.mjs --banner:js='import { createRequire as __nrq } from \"node:module\"; const require = __nrq(import.meta.url);' && esbuild scripts/migrate-postgres.ts --bundle --platform=node --target=node24 --format=esm --outbase=scripts --outdir=dist/scripts --out-extension:.js=.mjs --banner:js='import { createRequire as __nrq } from \"node:module\"; const require = __nrq(import.meta.url);'"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1042.0",
+    "@cfworker/json-schema": "^4.1.1",
+    "@cloudflare/containers": "^0.3.0",
+    "@hono/node-server": "^2.0.1",
+    "@hono/zod-openapi": "^0.19.10",
+    "@scalar/hono-api-reference": "^0.10.13",
+    "@textral/contracts": "workspace:*",
+    "@textral/corpus-profiles": "workspace:*",
+    "@textral/mcp": "workspace:*",
+    "@textral/sdk": "workspace:*",
+    "hono": "^4.6.0",
+    "ioredis": "^5.10.1",
+    "js-tiktoken": "^1.0.21",
+    "pg": "^8.20.0",
+    "ulidx": "^2.4.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.55",
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "@types/pg": "^8.20.0",
+    "esbuild": "^0.25.0",
+    "testcontainers": "^11.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "~3.2.4",
+    "wrangler": "^4.87.0"
+  }
+}

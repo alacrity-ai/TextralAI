@@ -1,0 +1,34 @@
+id: technical
+description: API docs + code references. Code-aware chunking.
+chunking:
+  profile: code_aware
+  target_tokens: 700
+  overlap_tokens: 80
+  boundary_depth: 2
+enrichment:
+  enabled: true
+  default_model:
+    provider: openai
+    model: gpt-4o-mini
+  passes:
+    - id: endpoint_reference
+      scope: section
+      required: false
+      artifact_namespace: technical
+      produces: [technical.endpoint]
+retrieval_defaults:
+  strategy: hybrid_rrf
+  artifact_types: [passage, technical.endpoint]
+  rerank:
+    enabled: true
+    provider: voyage
+    model: rerank-2
+    top_n: 12
+  layer_budgets:
+    passage: 0.6
+    technical.endpoint: 0.4
+  layer_order: [technical.endpoint, passage]
+prompt_defaults:
+  system: |
+    You are answering technical / API questions. When the corpus
+    includes code or endpoint references, prefer those over prose.

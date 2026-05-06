@@ -1,0 +1,14 @@
+node_modules
+dist
+.wrangler
+coverage
+pnpm-lock.yaml
+
+# Reference repos are checked in for structural reference only — not maintained here.
+reference_repos
+
+# Docs are hand-authored markdown; line-breaks, tables, and code-fence layouts
+# are deliberate. Prettier flattens them in distracting ways.
+docs
+README.md
+SECRETS.md

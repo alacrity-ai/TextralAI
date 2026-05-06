@@ -1,0 +1,44 @@
+id: legal
+description: Contracts + leases. Clause-aware chunking.
+chunking:
+  profile: legal_clause_aware
+  target_tokens: 500
+  overlap_tokens: 50
+  boundary_depth: 2
+enrichment:
+  enabled: true
+  default_model:
+    provider: openai
+    model: gpt-4o-mini
+  passes:
+    - id: clause_extraction
+      scope: chunk
+      required: false
+      artifact_namespace: legal
+      produces: [legal.clause]
+    - id: obligation_extraction
+      scope: document
+      required: false
+      depends_on: [clause_extraction]
+      artifact_namespace: legal
+      produces: [legal.obligation]
+      max_input_tokens: 80000
+      oversize_strategy: truncate
+retrieval_defaults:
+  strategy: hybrid_rrf
+  artifact_types: [passage, legal.clause, legal.obligation]
+  rerank:
+    enabled: true
+    provider: voyage
+    model: rerank-2
+    top_n: 12
+  layer_budgets:
+    passage: 0.4
+    legal.clause: 0.4
+    legal.obligation: 0.2
+  layer_order: [legal.clause, legal.obligation, passage]
+prompt_defaults:
+  system: |
+    You are answering questions about a legal document. Distinguish
+    contractual language from your own analysis. Cite the specific
+    clause IDs that ground your answer.

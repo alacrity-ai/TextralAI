@@ -1,0 +1,34 @@
+id: support
+description: Customer-support knowledge bases. Step extraction.
+chunking:
+  profile: generic
+  target_tokens: 400
+  overlap_tokens: 60
+  boundary_depth: 2
+enrichment:
+  enabled: true
+  default_model:
+    provider: openai
+    model: gpt-4o-mini
+  passes:
+    - id: troubleshooting_step
+      scope: section
+      required: false
+      artifact_namespace: support
+      produces: [support.step]
+retrieval_defaults:
+  strategy: hybrid_rrf
+  artifact_types: [passage, support.step]
+  rerank:
+    enabled: true
+    provider: voyage
+    model: rerank-2
+    top_n: 8
+  layer_budgets:
+    passage: 0.5
+    support.step: 0.5
+  layer_order: [support.step, passage]
+prompt_defaults:
+  system: |
+    You are answering customer-support questions. Prefer step-by-step
+    instructions when the corpus contains them. Cite the source.

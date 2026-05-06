@@ -25,6 +25,27 @@ export const QueryEmbeddingConfig = z.object({
 });
 export type QueryEmbeddingConfig = z.infer<typeof QueryEmbeddingConfig>;
 
+/** Per-request rerank overrides. All fields are individually optional —
+ *  the request is a partial override, not a full replacement. Omitted
+ *  fields inherit from the corpus profile's `retrieval_defaults.rerank`.
+ *
+ *  `provider` is constrained to the providers that actually expose a
+ *  rerank capability in the registry (see apps/api/src/providers/registry.ts).
+ *
+ *  `provider_key_id` and `provider_key_ref` are mutually exclusive
+ *  knobs for pinning which BYOK key the rerank call uses; if both are
+ *  omitted, the resolver falls back to the profile-declared key, then
+ *  to the tenant's `(provider, label='default')` key. */
+export const RerankOverride = z.object({
+  enabled: z.boolean().optional(),
+  provider: z.enum(['voyage', 'cohere']).optional(),
+  model: z.string().min(1).optional(),
+  top_n: z.number().int().positive().max(200).optional(),
+  provider_key_ref: z.string().optional(),
+  provider_key_id: z.string().optional(),
+});
+export type RerankOverride = z.infer<typeof RerankOverride>;
+
 export const RetrievalConfig = z.object({
   strategy: z.enum(['hybrid_rrf']).default('hybrid_rrf'),
   top_k_dense: z.number().int().positive().default(30),
@@ -32,6 +53,7 @@ export const RetrievalConfig = z.object({
   rrf_k: z.number().int().positive().default(60),
   artifact_types: z.array(z.string()).default(['passage']),
   require_citations: z.boolean().default(true),
+  rerank: RerankOverride.optional(),
 });
 export type RetrievalConfig = z.infer<typeof RetrievalConfig>;
 

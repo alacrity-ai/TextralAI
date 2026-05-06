@@ -185,12 +185,20 @@ export class OpenAICompatProvider
   // ── Body building ─────────────────────────────────────────────────────
 
   private buildChatBody(req: ChatRequest): Record<string, unknown> {
+    const reasoning = isReasoningModel(req.model);
     const body: Record<string, unknown> = {
       model: req.model,
       messages: req.messages,
-      temperature: req.temperature ?? 0,
     };
-    if (req.max_tokens != null) body.max_tokens = req.max_tokens;
+    // Reasoning models (gpt-5*, o1*, o3*, o4*) reject `temperature !== 1`
+    // and require `max_completion_tokens` instead of `max_tokens`. See
+    // OpenAI docs "Reasoning models — API differences."
+    if (!reasoning) {
+      body.temperature = req.temperature ?? 0;
+      if (req.max_tokens != null) body.max_tokens = req.max_tokens;
+    } else if (req.max_tokens != null) {
+      body.max_completion_tokens = req.max_tokens;
+    }
     if (req.stop) body.stop = req.stop;
     if (req.response_format) {
       const encoded = this.encodeResponseFormat(req.response_format);
@@ -398,6 +406,15 @@ export class OpenAICompatProvider
         return 'other';
     }
   }
+}
+
+/** OpenAI's reasoning-model family (gpt-5*, o1*, o3*, o4*) does not
+ *  accept `temperature` (other than the default 1) and requires
+ *  `max_completion_tokens` in place of the deprecated `max_tokens`.
+ *  See: https://platform.openai.com/docs/guides/reasoning */
+export function isReasoningModel(model: string): boolean {
+  const m = model.toLowerCase();
+  return /^gpt-5/.test(m) || /^o[134](?:-|$)/.test(m);
 }
 
 /** Convenience instance for OpenAI-direct. */

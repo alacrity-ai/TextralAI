@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ApiKeyProvider } from './auth/ApiKeyContext.js';
 import { ApiKeyGate } from './auth/ApiKeyGate.js';
 import { NamespaceProvider } from './context/NamespaceContext.js';
+import { ModelRegistryProvider } from './context/ModelRegistryContext.js';
 import { ToastProvider } from './context/ToastContext.js';
 import { ConfirmProvider } from './context/ConfirmContext.js';
 import { AppShell } from './components/layout/AppShell.js';
@@ -22,6 +23,7 @@ export function App() {
           <ConfirmProvider>
             <ApiKeyGate>
               <NamespaceProvider>
+                <ModelRegistryProvider>
                 <AppShell>
                   <Routes>
                     <Route path="/" element={<QueryBench />} />
@@ -36,6 +38,7 @@ export function App() {
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </AppShell>
+                </ModelRegistryProvider>
               </NamespaceProvider>
             </ApiKeyGate>
           </ConfirmProvider>

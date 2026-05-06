@@ -12,6 +12,7 @@ import {
 import { query, listQueryEvents, getQueryEvent, getQueryResponse } from './query.js';
 import { registerProviderKey, listProviderKeys } from './provider-keys.js';
 import { listFailingJobs, retryFailingJob } from './ops.js';
+import { listModels } from './models.js';
 
 export const allTools: ToolDef[] = [
   // namespaces
@@ -35,4 +36,6 @@ export const allTools: ToolDef[] = [
   // operations
   listFailingJobs,
   retryFailingJob,
+  // meta
+  listModels,
 ] as ToolDef[];

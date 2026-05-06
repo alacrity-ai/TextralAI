@@ -26,6 +26,7 @@ claude mcp add textral \
 e.g.
 ```bash
 claude mcp add textral \
+  --scope user \
   --env TEXTRAL_BASE_URL=http://localhost:8787 \
   --env TEXTRAL_API_KEY=tx_live_01KQV8KFHF83QRTQNC86AQ619G_WYHSUF4XHNF3ASY3RBVEZWRLSFN4JRK4 \
   -- node /home/leif/textral/TEXTRAL_REFACTOR_WIP/packages/mcp/bin/textral-mcp.mjs

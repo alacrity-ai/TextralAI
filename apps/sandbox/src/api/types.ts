@@ -4,6 +4,23 @@
 
 export type ProviderName = 'openai' | 'anthropic' | 'cohere' | 'voyage' | 'workers_ai';
 
+export type ModelKind = 'embedding' | 'inference' | 'rerank';
+
+/** Curated registry entry — mirror of `@textral/contracts` `KnownModel`.
+ *  Hand-typed here to avoid pulling the whole contracts package into the
+ *  sandbox bundle. */
+export interface KnownModel {
+  id: string;
+  provider: ProviderName;
+  kind: ModelKind;
+  family: string;
+  dimensions?: number;
+  supported_dimensions?: number[];
+  tier?: 'flagship' | 'standard' | 'mini' | 'lite';
+  deprecated?: boolean;
+  notes?: string;
+}
+
 export interface Tenant {
   id: string;
   display_name: string;
@@ -21,6 +38,18 @@ export interface MeResponse {
 
 export type VectorBackend = 'vectorize' | 'qdrant' | 'pinecone';
 
+/** A (chunking, embedding) profile pair the namespace was actually
+ *  ingested with — joined off version_indexes server-side. Authoritative
+ *  source of dimensions; the form should prefer this over
+ *  `default_embedding_profile` when populating defaults. */
+export interface IndexedProfile {
+  chunking_profile: string;
+  embedding_profile: string;
+  embedding_provider: string;
+  embedding_model: string;
+  embedding_dimensions: number;
+}
+
 export interface Namespace {
   id: string;
   tenant_id: string;
@@ -32,6 +61,7 @@ export interface Namespace {
   vector_backend: VectorBackend;
   vector_index_name: string | null;
   vector_namespace: string | null;
+  indexed_profiles?: IndexedProfile[];
   created_at: number;
 }
 
@@ -241,6 +271,14 @@ export interface QueryRequest {
     rrf_k?: number;
     artifact_types?: string[];
     require_citations?: boolean;
+    rerank?: {
+      enabled?: boolean;
+      provider?: 'voyage' | 'cohere';
+      model?: string;
+      top_n?: number;
+      provider_key_ref?: string;
+      provider_key_id?: string;
+    };
   };
   context?: {
     max_context_tokens?: number;

@@ -7,3 +7,4 @@ export * from './ingest.js';
 export * from './chunk.js';
 export * from './query.js';
 export * from './eval.js';
+export * from './models.js';

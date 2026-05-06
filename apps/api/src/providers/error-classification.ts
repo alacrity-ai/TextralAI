@@ -36,7 +36,14 @@ export function classifyByStatus(ctx: ClassificationContext): ProviderErrorType 
   return 'unknown';
 }
 
-/** Whether the error type should short-circuit the retry loop. */
+/** Whether the error type should short-circuit the retry loop.
+ *
+ *  `bad_request` is fatal: HTTP 400 from OpenAI/Anthropic indicates a
+ *  malformed request (unsupported parameter, missing required field,
+ *  schema violation), and retrying will deterministically hit the same
+ *  400. The only exception class would be transient validation
+ *  (none currently observed); if one arises, route it to a more
+ *  specific type via the OpenAI/Anthropic classifiers. */
 export function isFatal(t: ProviderErrorType): boolean {
   switch (t) {
     case 'invalid_api_key':
@@ -44,8 +51,8 @@ export function isFatal(t: ProviderErrorType): boolean {
     case 'unsupported_model':
     case 'context_length_exceeded':
     case 'refusal':
-      return true;
     case 'bad_request':
+      return true;
     case 'malformed_response':
     case 'schema_violation':
     case 'partial_batch':

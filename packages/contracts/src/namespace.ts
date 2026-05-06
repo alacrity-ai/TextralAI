@@ -37,6 +37,19 @@ export const VectorNamespace = z
     'vector_namespace must be lowercase alphanumerics, _, or -',
   );
 
+/** A (chunking_profile, embedding_profile) pair the namespace was actually
+ *  ingested with. Computed on read by joining `version_indexes` rows
+ *  against the namespace's documents. Authoritative — `default_embedding_profile`
+ *  is a soft default that does not always encode dimensions. */
+export const IndexedProfile = z.object({
+  chunking_profile: z.string(),
+  embedding_profile: z.string(),
+  embedding_provider: z.string(),
+  embedding_model: z.string(),
+  embedding_dimensions: z.number().int(),
+});
+export type IndexedProfile = z.infer<typeof IndexedProfile>;
+
 export const Namespace = z.object({
   id: z.string(),
   tenant_id: z.string(),
@@ -64,6 +77,11 @@ export const Namespace = z.object({
         'can share one Pinecone index by using different values here. ' +
         'Qdrant / Vectorize: null (not used).',
     ),
+  /** The (chunking, embedding) profiles this namespace was actually
+   *  ingested with — deduplicated across version_indexes. Empty for
+   *  namespaces with no ingested documents yet. Clients should prefer
+   *  these over `default_embedding_profile` when constructing queries. */
+  indexed_profiles: z.array(IndexedProfile).optional(),
   created_at: z.number().int(),
 });
 export type Namespace = z.infer<typeof Namespace>;

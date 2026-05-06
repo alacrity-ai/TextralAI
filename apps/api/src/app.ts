@@ -38,6 +38,7 @@ import { internalMcpToolCallsRoute } from './routes/internal/mcp-tool-calls.js';
 import { mcpRoute } from './routes/mcp.js';
 import { redactionCheckRoute } from './routes/__redaction_check.js';
 import { profilesRoute } from './routes/profiles.js';
+import { modelsRoute } from './routes/models.js';
 import { errorCatalogRoute } from './routes/error-catalog.js';
 import { mountDocs } from './routes/docs.js';
 
@@ -106,6 +107,7 @@ v1.route('/query', queryRoute);
 v1.route('/query-events', queryEventsRoute);
 v1.route('/chunks', chunksRoute);
 v1.route('/profiles', profilesRoute);
+v1.route('/models', modelsRoute);
 v1.route('/error-catalog', errorCatalogRoute);
 v1.route('/_internal/mcp_tool_calls', internalMcpToolCallsRoute);
 v1.route('/mcp', mcpRoute);

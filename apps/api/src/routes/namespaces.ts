@@ -9,6 +9,7 @@ import {
   findPineconeNamespaceConflict,
   getNamespaceBySlug,
   insertNamespace,
+  listIndexedProfilesForNamespace,
   listNamespaces,
   softDeleteNamespace,
   updateNamespace,
@@ -71,7 +72,13 @@ const listRoute = createRoute({
 namespacesRoute.openapi(listRoute, async (c) => {
   const tenantId = c.get('tenant_id')!;
   const items = await listNamespaces(c.env.db, tenantId);
-  return c.json({ data: items }, 200);
+  const enriched = await Promise.all(
+    items.map(async (ns) => ({
+      ...ns,
+      indexed_profiles: await listIndexedProfilesForNamespace(c.env.db, tenantId, ns.id),
+    })),
+  );
+  return c.json({ data: enriched }, 200);
 });
 
 const createRouteDef = createRoute({
@@ -223,7 +230,8 @@ namespacesRoute.openapi(getBySlug, async (c) => {
   const { slug } = c.req.valid('param');
   const ns = await getNamespaceBySlug(c.env.db, tenantId, slug);
   if (!ns) throw new TextralError('NAMESPACE_NOT_FOUND', 404, `Namespace not found: ${slug}`);
-  return c.json(ns, 200);
+  const indexed_profiles = await listIndexedProfilesForNamespace(c.env.db, tenantId, ns.id);
+  return c.json({ ...ns, indexed_profiles }, 200);
 });
 
 const patchRoute = createRoute({
@@ -268,7 +276,8 @@ namespacesRoute.openapi(patchRoute, async (c) => {
     }),
   });
   if (!updated) throw new TextralError('NAMESPACE_NOT_FOUND', 404, `Namespace not found: ${slug}`);
-  return c.json(updated, 200);
+  const indexed_profiles = await listIndexedProfilesForNamespace(c.env.db, tenantId, updated.id);
+  return c.json({ ...updated, indexed_profiles }, 200);
 });
 
 const deleteRoute = createRoute({

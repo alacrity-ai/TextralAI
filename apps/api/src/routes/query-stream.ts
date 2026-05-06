@@ -21,7 +21,6 @@ import { assembleContext } from '../retrieval/context-assembly.js';
 import { resolveCorpusProfile } from '../retrieval/profile-resolver.js';
 import { maybeRerank } from '../retrieval/rerank.js';
 import { hydrateChunksByIds } from '../db/chunks.js';
-import { resolveProviderKey } from '../auth/provider-key-resolver.js';
 import { buildMessages } from '../synthesis/prompt-builder.js';
 import { validateCitations } from '../synthesis/citation-validator.js';
 import { computeDegradation } from '../synthesis/degradation.js';
@@ -34,6 +33,7 @@ import { writeMetric } from '../observability/metrics.js';
 import {
   resolveVersionIds,
   resolveProviderKeyForQuery,
+  resolveRerankProviderKey,
   defaultDim,
 } from '../query/helpers.js';
 import { finalizeAudit, finalizeFailure } from '../query/audit-shape.js';
@@ -59,7 +59,19 @@ export interface StreamingQueryBody {
     provider_key_id?: string;
   };
   chunking: { profile: string };
-  retrieval: { strategy: string; top_k_dense?: number; top_k_sparse?: number };
+  retrieval: {
+    strategy: string;
+    top_k_dense?: number;
+    top_k_sparse?: number;
+    rerank?: {
+      enabled?: boolean;
+      provider?: 'voyage' | 'cohere';
+      model?: string;
+      top_n?: number;
+      provider_key_ref?: string;
+      provider_key_id?: string;
+    };
+  };
   prompt?: { system?: string | null; developer?: string | null };
   document_ids?: string[];
 }
@@ -196,6 +208,14 @@ export async function runStreamingQuery(
 
   // 5. Optional rerank (Phase 5).
   const rerankCfg = profile.retrieval_defaults.rerank;
+  if (rerankCfg.enabled && (!rerankCfg.provider || !rerankCfg.model)) {
+    throw new TextralError(
+      'BAD_REQUEST',
+      400,
+      'rerank.provider and rerank.model are required when rerank.enabled is true',
+    );
+  }
+  const requestRerankKeyId = body.retrieval?.rerank?.provider_key_id;
   let candidatesAfterRerank = retrieval.candidates;
   let rerankAudit: Awaited<ReturnType<typeof maybeRerank>>['audit'];
   if (rerankCfg.enabled && rerankCfg.provider && rerankCfg.model) {
@@ -205,13 +225,14 @@ export async function runStreamingQuery(
     const inputs = retrieval.candidates
       .map((cc) => ({ chunk_id: cc.chunk_id, text: byId.get(cc.chunk_id) ?? '' }))
       .filter((cc) => cc.text);
-    const rerankKey = await resolveProviderKey(
+    const rerankKey = await resolveRerankProviderKey(
       c.env,
       tenantId,
-      { kind: 'optional_ref', provider: rerankCfg.provider, ref: rerankCfg.provider_key_ref },
-      { include_raw: true },
+      rerankCfg.provider,
+      rerankCfg.provider_key_ref,
+      requestRerankKeyId,
     );
-    const rerankProvider = rerankKey?.raw_key
+    const rerankProvider = rerankKey
       ? resolveProvider(c.env, {
           provider: rerankCfg.provider,
           api_key: rerankKey.raw_key,

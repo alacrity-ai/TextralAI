@@ -2,7 +2,7 @@
 // non-optional first argument so it's structurally impossible to forget
 // the tenant filter at a call site.
 
-import type { Namespace } from '@textral/contracts';
+import type { IndexedProfile, Namespace } from '@textral/contracts';
 import type { Db } from '../runtime/shared/interfaces.js';
 
 interface NamespaceRow {
@@ -199,6 +199,54 @@ export async function updateNamespace(
     [...values, tenantId, slug],
   );
   return getNamespaceBySlug(db, tenantId, slug);
+}
+
+/** Distinct (chunking_profile, embedding_profile) pairs the namespace
+ *  was actually ingested with — joined through documents → versions →
+ *  indexes. Excludes failed indexes; preserves whichever ready/partial
+ *  rows exist. Used by GET /v1/namespaces to surface authoritative
+ *  profiles to clients (see Bug 3B in docs/bugs/resolutions/5-6-2026-SOLUTION-PLAN.md). */
+export async function listIndexedProfilesForNamespace(
+  db: Db,
+  tenantId: string,
+  namespaceId: string,
+): Promise<IndexedProfile[]> {
+  const rows = await db.all<{
+    chunking_profile: string;
+    embedding_profile: string;
+    embedding_provider: string;
+    embedding_model: string;
+    embedding_dimensions: number;
+    latest_at: number;
+  }>(
+    `SELECT vi.chunking_profile     AS chunking_profile,
+            vi.embedding_profile    AS embedding_profile,
+            vi.embedding_provider   AS embedding_provider,
+            vi.embedding_model      AS embedding_model,
+            vi.embedding_dimensions AS embedding_dimensions,
+            MAX(vi.created_at)      AS latest_at
+       FROM version_indexes vi
+       JOIN document_versions dv ON dv.id = vi.version_id
+       JOIN documents d         ON d.id  = dv.document_id
+      WHERE vi.tenant_id = ?
+        AND d.namespace_id = ?
+        AND d.deleted_at IS NULL
+        AND vi.status IN ('ready', 'partial')
+      GROUP BY vi.chunking_profile,
+               vi.embedding_profile,
+               vi.embedding_provider,
+               vi.embedding_model,
+               vi.embedding_dimensions
+      ORDER BY latest_at DESC`,
+    [tenantId, namespaceId],
+  );
+  return rows.map((r) => ({
+    chunking_profile: r.chunking_profile,
+    embedding_profile: r.embedding_profile,
+    embedding_provider: r.embedding_provider,
+    embedding_model: r.embedding_model,
+    embedding_dimensions: r.embedding_dimensions,
+  }));
 }
 
 export async function softDeleteNamespace(

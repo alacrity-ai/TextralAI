@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNamespace } from '../context/NamespaceContext.js';
+import { useModelRegistry } from '../context/ModelRegistryContext.js';
 import { Input } from './ui/Input.js';
 import { Button } from './ui/Button.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
-import type { ProviderName, QueryRequest } from '../api/types.js';
+import type { ModelKind, ProviderName, QueryRequest } from '../api/types.js';
 
 export interface QueryFormState {
   query: string;
@@ -23,6 +24,11 @@ export interface QueryFormState {
   retrieval_rrf_k: number;
   retrieval_artifact_types: string;
   retrieval_require_citations: boolean;
+  rerank_enabled: 'inherit' | 'on' | 'off';
+  rerank_provider: '' | 'voyage' | 'cohere';
+  rerank_model: string;
+  rerank_top_n: number | '';
+  rerank_provider_key_ref: string;
   context_max_tokens: number;
   prompt_system: string;
   prompt_developer: string;
@@ -49,6 +55,11 @@ const DEFAULTS: QueryFormState = {
   retrieval_rrf_k: 60,
   retrieval_artifact_types: 'passage',
   retrieval_require_citations: true,
+  rerank_enabled: 'inherit',
+  rerank_provider: '',
+  rerank_model: '',
+  rerank_top_n: '',
+  rerank_provider_key_ref: '',
   context_max_tokens: 12000,
   prompt_system: '',
   prompt_developer: '',
@@ -79,6 +90,7 @@ export function QueryForm({
   onNamespaceChange,
 }: Props) {
   const { active, list } = useNamespace();
+  const registry = useModelRegistry();
   const targetNamespace = namespaceOverride ?? active?.slug ?? '';
   const storageKey = `textral.queryform.${targetNamespace || 'default'}`;
   const [form, setForm] = useState<QueryFormState>(() => {
@@ -93,10 +105,21 @@ export function QueryForm({
     return { ...DEFAULTS, ...initial };
   });
 
-  // When the active namespace changes, prefer its default embedding profile.
+  // When the active namespace changes, prefer the profile it was actually
+  // indexed under (authoritative — sourced from version_indexes server-side).
+  // Fall back to the soft `default_embedding_profile` only when the namespace
+  // has no ingested documents yet.
   useEffect(() => {
     if (!active) return;
-    if (active.default_embedding_profile?.includes('text-embedding-3-large')) {
+    const indexed = active.indexed_profiles?.[0];
+    if (indexed) {
+      setForm((f) => ({
+        ...f,
+        embedding_provider: providerFromName(indexed.embedding_provider, f.embedding_provider),
+        embedding_model: indexed.embedding_model,
+        embedding_dimensions: indexed.embedding_dimensions,
+      }));
+    } else if (active.default_embedding_profile?.includes('text-embedding-3-large')) {
       setForm((f) => ({
         ...f,
         embedding_model: 'text-embedding-3-large',
@@ -166,6 +189,21 @@ export function QueryForm({
         ...(form.prompt_developer ? { developer: form.prompt_developer } : {}),
       },
     };
+
+    const rerankOverride: NonNullable<NonNullable<QueryRequest['retrieval']>['rerank']> = {};
+    if (form.rerank_enabled === 'on') rerankOverride.enabled = true;
+    else if (form.rerank_enabled === 'off') rerankOverride.enabled = false;
+    if (form.rerank_provider) rerankOverride.provider = form.rerank_provider;
+    if (form.rerank_model.trim()) rerankOverride.model = form.rerank_model.trim();
+    if (typeof form.rerank_top_n === 'number' && form.rerank_top_n > 0) {
+      rerankOverride.top_n = form.rerank_top_n;
+    }
+    if (form.rerank_provider_key_ref.trim()) {
+      rerankOverride.provider_key_ref = form.rerank_provider_key_ref.trim();
+    }
+    if (Object.keys(rerankOverride).length > 0 && req.retrieval) {
+      req.retrieval.rerank = rerankOverride;
+    }
 
     if (docIds.length > 0) {
       req.document_ids = docIds;
@@ -257,10 +295,20 @@ export function QueryForm({
             onChange={(v) => patch('embedding_provider', v as ProviderName)}
             options={['openai', 'cohere', 'voyage', 'workers_ai']}
           />
-          <Input
+          <ModelSelectField
             label="Model"
             value={form.embedding_model}
-            onChange={(e) => patch('embedding_model', e.target.value)}
+            provider={form.embedding_provider}
+            kind="embedding"
+            registry={registry}
+            onChange={(id) => {
+              const known = registry.byId(id);
+              setForm((f) => ({
+                ...f,
+                embedding_model: id,
+                ...(known?.dimensions ? { embedding_dimensions: known.dimensions } : {}),
+              }));
+            }}
           />
           <Input
             label="Dimensions"
@@ -284,10 +332,13 @@ export function QueryForm({
             onChange={(v) => patch('inference_provider', v as ProviderName)}
             options={['openai', 'anthropic', 'workers_ai']}
           />
-          <Input
+          <ModelSelectField
             label="Model"
             value={form.inference_model}
-            onChange={(e) => patch('inference_model', e.target.value)}
+            provider={form.inference_provider}
+            kind="inference"
+            registry={registry}
+            onChange={(id) => patch('inference_model', id)}
           />
           <Input
             label="Key ref"
@@ -350,6 +401,50 @@ export function QueryForm({
           />
           <span>require citations</span>
         </label>
+      </Group>
+
+      <Group title="Reranker">
+        <FieldGrid>
+          <SelectField
+            label="Enabled"
+            value={form.rerank_enabled}
+            onChange={(v) => patch('rerank_enabled', v as 'inherit' | 'on' | 'off')}
+            options={['inherit', 'on', 'off']}
+          />
+          <SelectField
+            label="Provider"
+            value={form.rerank_provider}
+            onChange={(v) => patch('rerank_provider', v as '' | 'voyage' | 'cohere')}
+            options={['', 'voyage', 'cohere']}
+          />
+          <ModelSelectField
+            label="Model"
+            value={form.rerank_model}
+            provider={form.rerank_provider === '' ? null : form.rerank_provider}
+            kind="rerank"
+            registry={registry}
+            allowEmpty
+            emptyLabel="(inherit)"
+            placeholder="inherit (e.g. rerank-2.5-lite)"
+            onChange={(id) => patch('rerank_model', id)}
+          />
+          <Input
+            label="top_n"
+            type="number"
+            value={form.rerank_top_n === '' ? '' : form.rerank_top_n}
+            onChange={(e) => {
+              const v = e.target.value;
+              patch('rerank_top_n', v === '' ? '' : Number(v));
+            }}
+            placeholder="inherit"
+          />
+          <Input
+            label="Key ref"
+            value={form.rerank_provider_key_ref}
+            onChange={(e) => patch('rerank_provider_key_ref', e.target.value)}
+            placeholder="inherit"
+          />
+        </FieldGrid>
       </Group>
 
       <Group title="Context & Prompt">
@@ -515,6 +610,101 @@ function SelectField({
   );
 }
 
+/** Provider+kind-filtered model picker with a free-text escape hatch.
+ *  The dropdown lists curated registry entries; switching to "Custom…"
+ *  reveals a text input so users can enter a model id we haven't added
+ *  to the registry yet. Mirrors the registry-staleness mitigation from
+ *  the solution plan. */
+function ModelSelectField({
+  label,
+  value,
+  provider,
+  kind,
+  registry,
+  onChange,
+  allowEmpty,
+  emptyLabel,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  provider: ProviderName | null;
+  kind: ModelKind;
+  registry: ReturnType<typeof useModelRegistry>;
+  onChange: (id: string) => void;
+  allowEmpty?: boolean;
+  emptyLabel?: string;
+  placeholder?: string;
+}) {
+  const known = useMemo(
+    () => (provider ? registry.filter(provider, kind) : []),
+    [registry, provider, kind],
+  );
+  const isKnown = value === '' || known.some((m) => m.id === value);
+  const [custom, setCustom] = useState(!isKnown && value !== '');
+
+  // If the provider changes and the current model isn't in the new
+  // provider's list, leave the value alone but flip into custom mode so
+  // the user sees what's set instead of a silently-mismatched dropdown.
+  useEffect(() => {
+    if (value === '' || known.length === 0) return;
+    if (!known.some((m) => m.id === value)) setCustom(true);
+  }, [known, value]);
+
+  const selectValue = custom ? '__custom__' : value;
+  const showHint = registry.loading && known.length === 0;
+
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <select
+        value={selectValue}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === '__custom__') {
+            setCustom(true);
+            return;
+          }
+          setCustom(false);
+          onChange(v);
+        }}
+        style={modelSelectStyle}
+        disabled={!provider}
+      >
+        {allowEmpty && (
+          <option value="" style={{ background: colors.bgElevated }}>
+            {emptyLabel ?? '(none)'}
+          </option>
+        )}
+        {known.map((m) => (
+          <option key={m.id} value={m.id} style={{ background: colors.bgElevated }}>
+            {m.id}
+            {m.tier ? ` · ${m.tier}` : ''}
+          </option>
+        ))}
+        <option value="__custom__" style={{ background: colors.bgElevated }}>
+          Custom…
+        </option>
+      </select>
+      {custom && (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder ?? 'Type a custom model ID'}
+          style={customInputStyle}
+        />
+      )}
+      {showHint && (
+        <div style={hintStyle}>Loading registry…</div>
+      )}
+      {!provider && (
+        <div style={hintStyle}>Pick a provider first</div>
+      )}
+    </div>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -594,6 +784,39 @@ const checkboxLabel: React.CSSProperties = {
   marginTop: spacing.sm,
 };
 
+const modelSelectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '11px 14px',
+  background: colors.bgInput,
+  color: colors.textPrimary,
+  border: `1px solid ${colors.border}`,
+  borderRadius: radii.md,
+  fontSize: 14,
+  fontFamily: "'DM Sans', sans-serif",
+  outline: 'none',
+  cursor: 'pointer',
+};
+
+const customInputStyle: React.CSSProperties = {
+  width: '100%',
+  marginTop: spacing.xs,
+  background: colors.bgInput,
+  color: colors.textPrimary,
+  border: `1px solid ${colors.border}`,
+  borderRadius: radii.md,
+  padding: '10px 12px',
+  fontSize: 13,
+  fontFamily: fonts.mono,
+  outline: 'none',
+};
+
+const hintStyle: React.CSSProperties = {
+  marginTop: 6,
+  fontSize: 11,
+  fontFamily: fonts.mono,
+  color: colors.textMuted,
+};
+
 const inlineSelectStyle: React.CSSProperties = {
   background: colors.bgInput,
   color: colors.textPrimary,
@@ -604,5 +827,13 @@ const inlineSelectStyle: React.CSSProperties = {
   fontFamily: fonts.mono,
   cursor: 'pointer',
 };
+
+/** Coerce the server-side `embedding_provider` string to the FE union type.
+ *  Falls back to `current` if the value isn't one of the known providers
+ *  (defensive against new providers added server-side ahead of the FE). */
+function providerFromName(name: string, current: ProviderName): ProviderName {
+  const known: ProviderName[] = ['openai', 'anthropic', 'cohere', 'voyage', 'workers_ai'];
+  return (known as string[]).includes(name) ? (name as ProviderName) : current;
+}
 
 export const DEFAULT_QUERY_FORM = DEFAULTS;

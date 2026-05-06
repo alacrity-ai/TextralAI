@@ -148,8 +148,8 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
   },
   EMBEDDING_PROFILE_MISMATCH: {
     http: 400,
-    when: 'Query\'s embedding model/dimensions don\'t match the namespace\'s indexed profile.',
-    recovery: 'Use the namespace\'s `default_embedding_profile`, or re-ingest under the new profile.',
+    when: 'Query\'s embedding profile (model + dimensions) or chunking profile doesn\'t match what this namespace was ingested with.',
+    recovery: 'Inspect `details.available[]` for the indexed (chunking_profile, embedding_profile) pairs; re-query with a matching pair or re-ingest under the requested profile. `details.dimension` indicates which dimension (embedding/chunking/both) failed.',
   },
   RETRIEVAL_FAILED: {
     http: 500,

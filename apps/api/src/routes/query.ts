@@ -28,7 +28,6 @@ import { assembleContext } from '../retrieval/context-assembly.js';
 import { resolveCorpusProfile } from '../retrieval/profile-resolver.js';
 import { maybeRerank } from '../retrieval/rerank.js';
 import { hydrateChunksByIds } from '../db/chunks.js';
-import { resolveProviderKey } from '../auth/provider-key-resolver.js';
 import { buildMessages } from '../synthesis/prompt-builder.js';
 import { validateCitations, filterStructuredCitations } from '../synthesis/citation-validator.js';
 import { computeDegradation } from '../synthesis/degradation.js';
@@ -43,6 +42,7 @@ import { runStreamingQuery, type StreamingQueryBody } from './query-stream.js';
 import {
   resolveVersionIds,
   resolveProviderKeyForQuery,
+  resolveRerankProviderKey,
   defaultDim,
 } from '../query/helpers.js';
 import {
@@ -67,6 +67,7 @@ const queryEndpoint = createRoute({
     '**Streaming.** Append `?stream=sse` to receive Server-Sent Events. Two event types: `token` (per-delta) and `done` (single final event with the same audit + citations + degradation_level the sync response carries).\n\n' +
     '**Structured output.** Set `output.mode="structured"` with a JSON schema to receive a parsed object that matches the schema. Citations come back as a separate array keyed by `chunk_id`.\n\n' +
     '**Reranking.** When the corpus profile (or request body) sets `retrieval.rerank.enabled=true`, the candidate set is re-scored via Voyage or Cohere. The `audit.reranker` field exposes `{enabled, executed, fallback_reason}` so consumers can distinguish "not requested" from "requested but fell back to RRF top-K" (e.g., reranker provider unavailable).\n\n' +
+    '**Reranker overrides.** `retrieval.rerank` accepts a partial override (`enabled`, `provider`, `model`, `top_n`, `provider_key_ref`, `provider_key_id`). Omitted fields inherit from the corpus profile\'s rerank config. To force-disable rerank for a single query, pass `retrieval.rerank.enabled=false`; to flip rerank on for a profile that has it off, you must also supply `provider` and `model` or the request fails with 400.\n\n' +
     '**Audit.** Every query produces a `query_events` row regardless of success/failure. Use `GET /v1/query-events/{id}` to retrieve the audit post-hoc.\n\n' +
     'Failure modes surface via `degradation_level`: `full` (everything OK), `partial` (some integrity issues but answer returned), `no_citations` (answer but model didn\'t cite), `cannot_answer` (provider/quota/empty-corpus failure).',
   security: [{ ApiKeyAuth: [] }],
@@ -250,6 +251,17 @@ queryRoute.openapi(queryEndpoint, async (c) => {
     // 6b. Rerank (Phase 5). Hydrate the candidate texts only when
     // rerank is enabled — otherwise we save the D1 round trip.
     const rerankCfg = profile.retrieval_defaults.rerank;
+    // Validate the merged rerank config. The corpus-profile schema's
+    // own superRefine only fires at YAML-load time; once a request
+    // override is merged in, we re-check the invariants here.
+    if (rerankCfg.enabled && (!rerankCfg.provider || !rerankCfg.model)) {
+      throw new TextralError(
+        'BAD_REQUEST',
+        400,
+        'rerank.provider and rerank.model are required when rerank.enabled is true',
+      );
+    }
+    const requestRerankKeyId = body.retrieval.rerank?.provider_key_id;
     let candidatesAfterRerank = retrieval.candidates;
     let rerankAudit: RerankerAudit;
     if (rerankCfg.enabled && rerankCfg.provider && rerankCfg.model) {
@@ -259,16 +271,14 @@ queryRoute.openapi(queryEndpoint, async (c) => {
       const inputs = retrieval.candidates
         .map((c) => ({ chunk_id: c.chunk_id, text: byId.get(c.chunk_id) ?? '' }))
         .filter((c) => c.text);
-      // optional_ref: if the profile didn't declare a key, resolve to
-      // null and let maybeRerank fall back with PROVIDER_KEY_NOT_FOUND.
-      // No exception-as-control-flow.
-      const rerankKey = await resolveProviderKey(
+      const rerankKey = await resolveRerankProviderKey(
         c.env,
         tenantId,
-        { kind: 'optional_ref', provider: rerankCfg.provider, ref: rerankCfg.provider_key_ref },
-        { include_raw: true },
+        rerankCfg.provider,
+        rerankCfg.provider_key_ref,
+        requestRerankKeyId,
       );
-      const rerankProvider = rerankKey?.raw_key
+      const rerankProvider = rerankKey
         ? resolveProvider(c.env, {
             provider: rerankCfg.provider,
             api_key: rerankKey.raw_key,

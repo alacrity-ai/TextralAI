@@ -14,6 +14,8 @@ import type {
   Namespace,
   Document,
   IngestionJob,
+  KnownModel,
+  ListModelsQuery,
   QueryRequest,
   QueryResponse,
   QueryEvent,
@@ -236,6 +238,17 @@ export class TextralClient {
         'GET',
         `/v1/admin/ingestion-jobs?dead_lettered=1${qs(q, '&')}`,
       ),
+  };
+
+  // ── models registry ─────────────────────────────────────────────
+  models = {
+    list: (q: ListModelsQuery = {}): Promise<{ data: KnownModel[] }> => {
+      const params: Record<string, unknown> = {};
+      if (q.provider) params.provider = q.provider;
+      if (q.kind) params.kind = q.kind;
+      if (q.include_deprecated) params.include_deprecated = 'true';
+      return this._call<{ data: KnownModel[] }>('GET', `/v1/models${qs(params)}`);
+    },
   };
 
   // ── reference resources (used by MCP `textral://*` resources) ───

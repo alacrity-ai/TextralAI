@@ -1,0 +1,128 @@
+Textral
+Copyright (c) 2026 Alacrity AI Solutions LLC
+
+Licensed under the Elastic License 2.0. See LICENSE.md.
+
+This product includes software developed by third parties, listed
+below with their respective copyrights and licenses. The full text
+of any license referenced here is available either in the
+`node_modules/<pkg>/LICENSE` file shipped with the dependency, at
+the upstream URL noted, or under a commonly-known SPDX identifier.
+
+This NOTICE is non-exhaustive — it covers significant components
+and any dependency whose license requires explicit attribution
+(notably Apache License 2.0). For a complete dependency-by-dependency
+license inventory, run:
+
+    pnpm licenses list                   # TypeScript / Node workspaces
+    pip-licenses --from=mixed --format=markdown   # Python ingest container
+                                                  # (run inside apps/ingest/)
+
+before each public release and reconcile any new entries here.
+
+================================================================================
+Apache License 2.0 components
+================================================================================
+
+The following components are distributed under the Apache License 2.0
+(<https://www.apache.org/licenses/LICENSE-2.0>):
+
+- @aws-sdk/client-s3 and other @aws-sdk/* packages
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  Source: https://github.com/aws/aws-sdk-js-v3
+
+- workerd (Cloudflare Workers runtime; bundled via wrangler/miniflare)
+  Copyright Cloudflare, Inc.
+  Source: https://github.com/cloudflare/workerd
+
+- @cloudflare/workers-types
+  Copyright Cloudflare, Inc.
+  Source: https://github.com/cloudflare/workerd
+
+- @cloudflare/containers
+  Copyright Cloudflare, Inc.
+  Source: https://github.com/cloudflare/containers
+
+================================================================================
+MIT-licensed components (selected)
+================================================================================
+
+The following major dependencies are distributed under the MIT License.
+(<https://opensource.org/licenses/MIT>) MIT requires retention of the
+copyright notice and license text in distributions; we satisfy that by
+preserving the upstream `LICENSE` file inside each `node_modules/<pkg>/`.
+
+- hono — Copyright (c) 2022 Yusuke Wada and Hono contributors
+- @hono/zod-openapi — Copyright (c) 2023 Hono contributors
+- @hono/node-server — Copyright (c) 2023 Yusuke Wada
+- @scalar/hono-api-reference — Copyright (c) Scalar
+- @modelcontextprotocol/sdk — Copyright (c) Anthropic, PBC and MCP contributors
+- zod — Copyright (c) 2020 Colin McDonnell
+- zod-to-json-schema — Copyright (c) 2020 Stefan Terdell
+- pg — Copyright (c) 2010-2024 Brian Carlson
+- ioredis — Copyright (c) 2015 Zihua Li
+- ulidx — Copyright (c) 2022 Perry Mitchell
+- js-tiktoken — Copyright (c) 2023 dqbd
+- @cfworker/json-schema — Copyright (c) Cfworker contributors
+- tsx — Copyright (c) Hiroki Osame
+- vitest — Copyright (c) 2024 VoidZero Inc. and Vitest contributors
+- typescript — Copyright (c) Microsoft Corporation (Apache 2.0; listed here for
+  visibility, attributed in full above)
+- esbuild — Copyright (c) 2020 Evan Wallace
+- React, ReactDOM (apps/sandbox) — Copyright (c) Meta Platforms, Inc.
+- Vite (apps/sandbox) — Copyright (c) 2019-present Yuxi (Evan) You and Vite
+  contributors
+- ulidx, uuid — Copyright respective authors
+
+================================================================================
+BSD-licensed components (selected)
+================================================================================
+
+- uvicorn (apps/ingest) — BSD-3-Clause
+- prettier — MIT (listed here historically; verify with `pnpm licenses list`)
+
+================================================================================
+Python (apps/ingest) — runtime dependencies
+================================================================================
+
+The Python ingest container's Apache 2.0 / BSD / PSF / MIT dependencies
+require similar attribution. The canonical attribution surface is the
+container image's metadata and `pip-licenses` output. At publish time:
+
+    cd apps/ingest && pip-licenses --from=mixed --format=markdown >> ../../NOTICE
+
+…and reconcile new entries against the upstream license terms.
+
+Significant entries include (non-exhaustive):
+
+- fastapi — MIT
+- pydantic — MIT
+- uvicorn — BSD-3-Clause
+- httpx — BSD-3-Clause
+- structlog — Apache 2.0 / MIT (dual)
+
+================================================================================
+Trademarks
+================================================================================
+
+"Textral" and any associated marks are trademarks of
+Alacrity AI Solutions LLC. Forks must use a different name.
+
+The trademarks of third-party components above (e.g., "AWS", "Cloudflare",
+"Pinecone", "Qdrant", "Anthropic", "OpenAI") are property of their
+respective owners and are referenced here for attribution only. No
+endorsement is implied.
+
+================================================================================
+Updating this file
+================================================================================
+
+When adding a dependency:
+
+1. Run `pnpm licenses list` (TS) or `pip-licenses` (Python) and check
+   whether the new dep's license requires explicit attribution
+   (Apache 2.0, BSD-2-Clause-Attribution, EPL, MPL — yes; MIT, ISC,
+   BSD-3 — best-effort).
+2. Add an entry under the appropriate section above.
+3. Confirm the upstream `LICENSE` file is preserved under
+   `node_modules/<pkg>/` (it is, by default — pnpm doesn't strip it).

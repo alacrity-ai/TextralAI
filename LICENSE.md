@@ -3,11 +3,7 @@
 Textral is licensed under the **Elastic License 2.0** (ELv2). The full,
 verbatim license text appears below.
 
-> **Copyright (c) 2026 [YOUR ORGANIZATION NAME]. All rights reserved.**
->
-> Replace `[YOUR ORGANIZATION NAME]` with your registered legal entity
-> before publishing. Replace the contact line in §3 with your real
-> licensing inquiries address.
+> **Copyright (c) 2026 Alacrity AI Solutions LLC. All rights reserved.**
 
 ---
 
@@ -74,7 +70,7 @@ parties — managed hosting, white-labeled SaaS, embedded in a product
 you sell where Textral's functionality is the value being sold —
 you'll need a commercial license from us.
 
-Contact: **[licensing@your-org.example.com]**
+Contact: **leif@alacrity.ai**
 
 We're open to conversation; reach out before you build, not after.
 
@@ -112,7 +108,7 @@ strongly recommend:
 ## 5. Trademarks
 
 "Textral" and any associated logos are trademarks of
-**[YOUR ORGANIZATION NAME]**. The license below grants no rights to
+**Alacrity AI Solutions LLC**. The license below grants no rights to
 the trademarks. Forks must use a different name.
 
 ---

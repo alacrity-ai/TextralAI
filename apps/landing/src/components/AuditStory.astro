@@ -18,12 +18,43 @@ const auditJson = `{
     "dropped_citations": []
   }
 }`;
+
+// Lightweight JSON syntax highlighter — input is trusted (literal in
+// this file), so we skip HTML escaping. Order matters: strings first
+// so we can disambiguate keys vs values via lookahead, then numbers
+// only at value positions to avoid touching digits inside strings.
+function highlightJson(raw: string): string {
+  let out = raw.replace(
+    /"((?:[^"\\]|\\.)*)"/g,
+    (match, content, offset, full) => {
+      const after = (full as string).slice(offset + match.length);
+      const isKey = /^\s*:/.test(after);
+      const cls = isKey ? 'json-key' : 'json-string';
+      return `<span class="${cls}">"${content}"</span>`;
+    },
+  );
+  out = out.replace(
+    /(:\s*)(\d+(?:\.\d+)?)/g,
+    '$1<span class="json-num">$2</span>',
+  );
+  out = out.replace(
+    /(:\s*)(true|false)\b/g,
+    '$1<span class="json-bool">$2</span>',
+  );
+  out = out.replace(
+    /(:\s*)(null)\b/g,
+    '$1<span class="json-null">$2</span>',
+  );
+  return out;
+}
+
+const auditHtml = highlightJson(auditJson);
 ---
 
 <section class="relative py-20 md:py-28">
   <div class="container-default">
     <div class="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
-      <div class="lg:col-span-6">
+      <div class="reveal lg:col-span-6">
         <p
           class="text-xs font-medium uppercase tracking-[0.04em] text-accent-magenta"
         >
@@ -60,7 +91,7 @@ const auditJson = `{
         </div>
       </div>
 
-      <div class="lg:col-span-6">
+      <div class="reveal lg:col-span-6">
         <div
           class="overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
         >
@@ -70,20 +101,25 @@ const auditJson = `{
             <span class="font-mono text-xs text-text-tertiary"
               >response.json</span
             >
-            <span class="inline-flex items-center gap-1.5 text-xs text-accent-success">
-              <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent-success"></span>
+            <span
+              class="inline-flex items-center gap-2 text-xs text-accent-success"
+            >
+              <span
+                class="status-dot-pulse inline-block h-1.5 w-1.5 rounded-full bg-accent-success text-accent-success"
+                aria-hidden="true"
+              ></span>
               audit.retrieval_status: full
             </span>
           </div>
           <pre
             class="overflow-x-auto bg-code-bg px-5 py-5 text-xs leading-relaxed md:text-sm"
-          ><code class="font-mono text-text-primary">{auditJson}</code></pre>
+          ><code class="font-mono text-text-primary" set:html={auditHtml} /></pre>
         </div>
       </div>
     </div>
 
     <figure
-      class="mt-16 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated md:mt-20"
+      class="reveal mt-16 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated md:mt-20"
     >
       <img
         src="/brand/retrieval_lineage_flow.webp"

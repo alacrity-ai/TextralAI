@@ -34,12 +34,16 @@ const pillars = [
 <section class="py-20 md:py-24">
   <div class="container-default">
     <p
-      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+      class="reveal-tight text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
     >
       What you get
     </p>
 
-    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div
+      class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+      data-stagger
+      data-stagger-step="110"
+    >
       {
         pillars.map((p) => (
           <article class="card reveal flex flex-col">

@@ -4,17 +4,17 @@
 <section class="py-20 md:py-24">
   <div class="container-default">
     <p
-      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+      class="reveal-tight text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
     >
       How it works
     </p>
     <h2
-      class="mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+      class="reveal mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
     >
       What's actually happening
     </h2>
     <p
-      class="mx-auto mt-6 max-w-prose text-center text-lg text-text-secondary"
+      class="reveal mx-auto mt-6 max-w-prose text-center text-lg text-text-secondary"
     >
       Ingest splits documents into section-aware chunks, embeds them with
       the provider you chose, indexes them in both a vector store
@@ -26,6 +26,8 @@
 
     <div
       class="mx-auto mt-12 grid max-w-5xl gap-4 md:grid-cols-2 lg:grid-cols-5"
+      data-stagger
+      data-stagger-step="80"
     >
       {
         [
@@ -36,7 +38,7 @@
           { label: 'Fuse · Rerank · Synthesize', detail: 'RRF → Voyage → inference', accent: 'border-accent-magenta/50' },
         ].map((step) => (
           <div
-            class={`relative rounded-lg border ${step.accent} bg-bg-elevated p-4`}
+            class={`reveal relative rounded-lg border ${step.accent} bg-bg-elevated p-4`}
           >
             <p class="font-mono text-xs uppercase tracking-[0.04em] text-text-tertiary">
               {step.label}
@@ -48,7 +50,7 @@
     </div>
 
     <p
-      class="mx-auto mt-8 max-w-prose text-center text-sm text-text-tertiary"
+      class="reveal mx-auto mt-8 max-w-prose text-center text-sm text-text-tertiary"
     >
       Architecture diagram with the full ingest + query paths is on the
       roadmap. In the meantime: every step above appears in the audit

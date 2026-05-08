@@ -45,11 +45,17 @@
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 80px;
   }
 
   body {
     @apply bg-bg-base text-text-primary font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  h1,
+  h2 {
+    text-wrap: balance;
   }
 
   ::selection {
@@ -60,7 +66,6 @@
     @apply outline-none ring-2 ring-accent-teal ring-offset-2 ring-offset-bg-base;
   }
 
-  /* Scrollbar */
   ::-webkit-scrollbar {
     width: 12px;
     height: 12px;
@@ -102,31 +107,197 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-2 rounded-md bg-accent-teal px-6 py-3 text-base font-semibold text-text-inverse transition-colors duration-150 hover:brightness-110;
+    @apply inline-flex items-center gap-2 rounded-md bg-accent-teal px-6 py-3 text-base font-semibold text-text-inverse;
+    transition:
+      filter 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 250ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 200ms;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 0 4px rgba(61, 217, 204, 0.18),
+      0 8px 28px -8px rgba(61, 217, 204, 0.45);
+  }
+  .btn-primary > span[aria-hidden] {
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .btn-primary:hover > span[aria-hidden] {
+    transform: translateX(2px);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center gap-2 rounded-md border border-border-strong bg-transparent px-6 py-3 text-base font-medium text-text-primary transition-colors duration-150 hover:bg-bg-elevated;
+    @apply inline-flex items-center gap-2 rounded-md border border-border-strong bg-transparent px-6 py-3 text-base font-medium text-text-primary;
+    transition:
+      background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .btn-secondary:hover {
+    @apply bg-bg-elevated;
+    border-color: rgba(61, 217, 204, 0.5);
   }
 
   .card {
-    @apply rounded-lg border border-border-subtle bg-bg-elevated p-6 transition-colors duration-150 hover:border-border-strong;
+    @apply rounded-lg border border-border-subtle bg-bg-elevated p-6;
+    transition:
+      border-color 250ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 250ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 350ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .card:hover {
+    @apply border-border-strong;
+    background-color: rgba(26, 34, 56, 0.5);
+    box-shadow:
+      0 0 0 1px rgba(61, 217, 204, 0.15),
+      0 16px 48px -16px rgba(61, 217, 204, 0.22);
+  }
+
+  /* ── Atmosphere ──────────────────────────────────────────────── */
+
+  .bg-dots-soft {
+    background-image: radial-gradient(
+      rgba(229, 236, 245, 0.07) 1px,
+      transparent 1px
+    );
+    background-size: 28px 28px;
+    background-position: 0 0;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      black 0%,
+      black 35%,
+      transparent 95%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      black 0%,
+      black 35%,
+      transparent 95%
+    );
   }
 
   .gradient-divider {
-    @apply h-px w-full bg-brand-gradient opacity-40;
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      #3dd9cc 25%,
+      #ffc93c 50%,
+      #ff5c6e 75%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    opacity: 0.55;
+    animation: ribbon-shimmer 9s ease-in-out infinite;
   }
+
+  /* ── Hero entrance choreography ──────────────────────────────── */
+
+  .hero-enter > * {
+    opacity: 0;
+    animation: fade-up 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .hero-enter > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .hero-enter > *:nth-child(2) {
+    animation-delay: 90ms;
+  }
+  .hero-enter > *:nth-child(3) {
+    animation-delay: 180ms;
+  }
+  .hero-enter > *:nth-child(4) {
+    animation-delay: 280ms;
+  }
+  .hero-enter > *:nth-child(5) {
+    animation-delay: 380ms;
+  }
+  .hero-enter > *:nth-child(6) {
+    animation-delay: 480ms;
+  }
+
+  .hero-image-enter {
+    opacity: 0;
+    animation: fade-up 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 600ms;
+  }
+
+  /* ── Scroll-triggered reveals ────────────────────────────────── */
 
   .reveal {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
     transition:
-      opacity 400ms ease-out,
-      transform 400ms ease-out;
+      opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
   }
   .reveal.is-visible {
     opacity: 1;
     transform: translateY(0);
+  }
+
+  /* Variants — subtler movement for inline / nested elements */
+  .reveal-tight {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-tight.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── JSON syntax highlighting ────────────────────────────────── */
+
+  .json-key {
+    color: #3dd9cc;
+  }
+  .json-string {
+    color: #5bd16d;
+  }
+  .json-num {
+    color: #ffc93c;
+  }
+  .json-bool {
+    color: #ff5c6e;
+  }
+  .json-null {
+    color: #6b788f;
+    font-style: italic;
+  }
+  .json-punct {
+    color: #6b788f;
+  }
+
+  /* ── Status dot pulse ────────────────────────────────────────── */
+
+  .status-dot-pulse {
+    position: relative;
+  }
+  .status-dot-pulse::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.35;
+    animation: pulse-soft 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    z-index: -1;
+  }
+
+  /* ── Caret accent (terminal-style cursor) ────────────────────── */
+
+  .caret-block {
+    display: inline-block;
+    width: 0.55em;
+    height: 1em;
+    margin-left: 0.1em;
+    vertical-align: -0.12em;
+    background: currentColor;
+    animation: caret-blink 1.1s step-end infinite;
   }
 }
 
@@ -139,8 +310,19 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .reveal {
+  .reveal,
+  .reveal-tight,
+  .hero-enter > *,
+  .hero-image-enter {
     opacity: 1;
     transform: none;
+    animation: none;
+  }
+  .gradient-divider {
+    animation: none;
+  }
+  .status-dot-pulse::after {
+    animation: none;
+    opacity: 0;
   }
 }

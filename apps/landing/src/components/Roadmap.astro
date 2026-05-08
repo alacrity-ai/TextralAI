@@ -40,26 +40,30 @@ const cards = [
 <section id="roadmap" class="py-20 md:py-24">
   <div class="container-default">
     <p
-      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+      class="reveal-tight text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
     >
       What's next
     </p>
     <h2
-      class="mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+      class="reveal mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
     >
       What we're building next
     </h2>
-    <p class="mt-4 text-center text-base text-text-secondary">
+    <p class="reveal mt-4 text-center text-base text-text-secondary">
       Public roadmap. Pull-requests welcome.
     </p>
 
-    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div
+      class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+      data-stagger
+      data-stagger-step="100"
+    >
       {
         cards.map((card) => (
           <a
             href={card.href}
             rel="noopener"
-            class={`group block rounded-lg border border-border-subtle bg-bg-elevated p-6 transition-colors duration-150 ${card.border}`}
+            class={`reveal group block rounded-lg border border-border-subtle bg-bg-elevated p-6 transition-all duration-300 ${card.border}`}
           >
             <p
               class={`text-xs font-medium uppercase tracking-[0.04em] ${card.accent}`}
@@ -81,7 +85,7 @@ const cards = [
       }
     </div>
 
-    <div class="mt-10 text-center">
+    <div class="reveal mt-10 text-center">
       <a
         href={`${repoUrl}/tree/main/docs/roadmap`}
         rel="noopener"

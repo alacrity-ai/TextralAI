@@ -84,23 +84,47 @@ const jsonLd = {
     <slot />
 
     <script>
-      // On-scroll reveal — IntersectionObserver, lightweight
+      // Scroll-triggered reveals — IntersectionObserver, lightweight.
+      // Two modes:
+      //   1. `.reveal` / `.reveal-tight` — element observes itself.
+      //   2. `[data-stagger]` parents — when intersected, stagger their
+      //      `.reveal` / `.reveal-tight` descendants with progressive
+      //      transition-delay so card grids "wash in" left-to-right.
       if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
-        const reveals = document.querySelectorAll('.reveal');
-        if (reveals.length > 0) {
-          const observer = new IntersectionObserver(
-            (entries) => {
-              entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                  entry.target.classList.add('is-visible');
-                  observer.unobserve(entry.target);
-                }
-              });
-            },
-            { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
-          );
-          reveals.forEach((el) => observer.observe(el));
-        }
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              const target = entry.target as HTMLElement;
+              if (target.hasAttribute('data-stagger')) {
+                const step = Number(target.dataset.staggerStep ?? '90');
+                const children = target.querySelectorAll<HTMLElement>(
+                  '.reveal, .reveal-tight',
+                );
+                children.forEach((child, i) => {
+                  child.style.transitionDelay = `${i * step}ms`;
+                  child.classList.add('is-visible');
+                });
+              } else {
+                target.classList.add('is-visible');
+              }
+              observer.unobserve(target);
+            });
+          },
+          { threshold: 0.12, rootMargin: '0px 0px -80px 0px' },
+        );
+
+        // Observe stagger parents
+        document
+          .querySelectorAll<HTMLElement>('[data-stagger]')
+          .forEach((el) => observer.observe(el));
+
+        // Observe individual reveals not inside a stagger parent
+        document
+          .querySelectorAll<HTMLElement>('.reveal, .reveal-tight')
+          .forEach((el) => {
+            if (!el.closest('[data-stagger]')) observer.observe(el);
+          });
       }
     </script>
   </body>

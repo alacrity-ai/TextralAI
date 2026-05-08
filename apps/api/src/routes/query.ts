@@ -44,7 +44,6 @@ import {
   resolveVersionIds,
   resolveProviderKeyForQuery,
   resolveRerankProviderKey,
-  defaultDim,
 } from '../query/helpers.js';
 import {
   finalizeAudit,
@@ -141,10 +140,37 @@ queryRoute.openapi(queryEndpoint, async (c) => {
     }
 
     // 4. Profile gate — for each version_id, find the matching version_index.
+    //
+    // The namespace's `embedding_dimensions` is locked at create time
+    // (matching what the chunks were embedded against). The query
+    // embedding MUST match that locked dim — otherwise dense retrieval
+    // throws `VECTOR_QUERY_ERROR (40006)` from Vectorize. The sandbox
+    // UI already enforces this lock; the API/MCP didn't until now.
+    //
+    // Behavior:
+    //   - If the request body OMITS `embedding.dimensions`, we use the
+    //     namespace's locked dim and forward it to the provider.
+    //   - If the request body includes a NON-matching dim, we reject
+    //     fast with a clear 400. Better than silent reformatting.
+    //   - If the body includes a MATCHING dim, we accept and forward.
+    const lockedDim = ns.embedding_dimensions;
+    if (
+      body.embedding.dimensions !== undefined &&
+      body.embedding.dimensions !== lockedDim
+    ) {
+      throw new TextralError(
+        'BAD_REQUEST',
+        400,
+        `embedding.dimensions=${body.embedding.dimensions} does not match the namespace's locked embedding_dimensions=${lockedDim}. ` +
+          'The namespace was created with this dim and all chunks were embedded at it. ' +
+          'Omit `embedding.dimensions` to use the namespace lock automatically.',
+      );
+    }
+    const effectiveDim = lockedDim;
     const embeddingProfile = makeEmbeddingProfile(
       body.embedding.provider,
       body.embedding.model,
-      body.embedding.dimensions ?? defaultDim(body.embedding.model),
+      effectiveDim,
     );
     const chunkingProfile = body.chunking.profile;
     for (const vid of versionIds) {
@@ -183,7 +209,10 @@ queryRoute.openapi(queryEndpoint, async (c) => {
       {
         model: body.embedding.model,
         input: [body.query],
-        ...(body.embedding.dimensions ? { dimensions: body.embedding.dimensions } : {}),
+        // Always forward the namespace-locked dim. Without this,
+        // OpenAI's `text-embedding-3-large` returns its native 3072d
+        // and Vectorize (configured for 1536d) rejects the query.
+        dimensions: effectiveDim,
       },
       embeddingProvider.options,
     );

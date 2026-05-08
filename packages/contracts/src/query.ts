@@ -174,6 +174,11 @@ export const QueryAudit = z.object({
   retrieval_status: z.enum(['full', 'dense_only', 'sparse_only', 'empty']),
   dense_candidates_returned: z.number().int(),
   sparse_candidates_returned: z.number().int(),
+  /** When the corresponding arm rejected, the upstream error message
+   *  is surfaced here so consumers can distinguish "0 results" from
+   *  "the arm crashed". Null when the arm succeeded. */
+  dense_error: z.string().nullable().optional(),
+  sparse_error: z.string().nullable().optional(),
   embedding_missing_count: z.number().int(),
   candidates_returned: z.number().int(),
   reranker: RerankerAudit,

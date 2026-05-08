@@ -86,6 +86,21 @@ export function resolve(env: Env, args: ResolveOptions): Resolved {
   }
 }
 
+/** Providers that Cloudflare AI Gateway officially supports as
+ *  passthrough targets. Anything else routes direct even when
+ *  `aiGateway` is otherwise configured — the gateway returns
+ *  `2008: Invalid provider` for unsupported segments, which surfaces
+ *  here as a fatal `bad_request`. Voyage AI was not enabled on the
+ *  user's CF gateway (verified live with code 2008 against
+ *  `voyageai/v1/rerank`); Cohere works (verified). Operators on
+ *  non-CF gateways (LiteLLM, etc.) can adjust the allow list. */
+const GATEWAY_SUPPORTED_PROVIDERS = new Set<string>([
+  'openai',
+  'anthropic',
+  'cohere',
+  'workers_ai',
+]);
+
 function computeGateway(env: Env, provider: string): GatewayConfig | undefined {
   // V3 Phase 2: gateway base URL + metadata-header prefix come from
   // `env.aiGateway` (built by the runtime adapter). When absent —
@@ -101,6 +116,10 @@ function computeGateway(env: Env, provider: string): GatewayConfig | undefined {
   // wire-format conventions in providers/types.ts). The translation
   // here is intentional.
   if (!env.aiGateway) return undefined;
+  // Bypass gateway for providers it doesn't understand — losing
+  // gateway analytics for that provider only, instead of every call
+  // to that provider failing fatal at the gateway boundary.
+  if (!GATEWAY_SUPPORTED_PROVIDERS.has(provider)) return undefined;
   return {
     base_url: env.aiGateway.baseUrl,
     metadata_header_prefix: env.aiGateway.metadataHeaderPrefix,

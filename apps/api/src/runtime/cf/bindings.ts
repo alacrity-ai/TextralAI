@@ -74,8 +74,36 @@ export function buildCfBindings(env: Env, ctx: ExecutionContext | null): Env {
           aiGateway: {
             baseUrl: `https://gateway.ai.cloudflare.com/v1/${env.CF_ACCOUNT_ID}/${env.AI_GATEWAY_ID}`,
             metadataHeaderPrefix: 'cf-aig-' as const,
-            providerSegment: (p: string) =>
-              p === 'workers_ai' ? 'workers-ai' : p,
+            // Each provider's gateway segment must match what
+            // Cloudflare AI Gateway publishes — and crucially,
+            // include the provider's API-version subpath when the
+            // gateway expects it. Concrete URL composition is
+            // `${baseUrl}/${segment}/${path}`, where `path` is
+            // whatever the provider adapter's `post(...)` call sends.
+            //
+            // OpenAI: gateway STRIPS `/v1/` (special-cased upstream),
+            //   so segment='openai' and adapter path='chat/completions'.
+            // Anthropic: keeps `v1/` — but the adapter already prepends
+            //   it on the path side, so segment='anthropic' is fine.
+            // Voyage: segment is published as `voyageai` (not `voyage`)
+            //   AND keeps `/v1/`. Voyage adapter sends path='rerank' and
+            //   directBaseUrl=`api.voyageai.com/v1`, so we encode `v1`
+            //   into the gateway segment to match `<gw>/voyageai/v1/rerank`.
+            // Cohere: keeps `/v2/`. Cohere adapter directBaseUrl ends
+            //   in `/v2`, so we mirror that into the gateway segment.
+            // workers_ai: published as `workers-ai`.
+            providerSegment: (p: string) => {
+              switch (p) {
+                case 'workers_ai':
+                  return 'workers-ai';
+                case 'voyage':
+                  return 'voyageai/v1';
+                case 'cohere':
+                  return 'cohere/v2';
+                default:
+                  return p;
+              }
+            },
           },
         }
       : {}),

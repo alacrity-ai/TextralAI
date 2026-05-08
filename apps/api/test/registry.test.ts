@@ -28,7 +28,20 @@ function fakeEnv(overrides: Partial<Env> = {}): Env {
     aiGateway: {
       baseUrl: 'https://gateway.ai.cloudflare.com/v1/acct/textral-dev',
       metadataHeaderPrefix: 'cf-aig-' as const,
-      providerSegment: (p: string) => (p === 'workers_ai' ? 'workers-ai' : p),
+      // Mirror the production CF providerSegment map (runtime/cf/
+      // bindings.ts) so test assertions reflect live segment values.
+      providerSegment: (p: string) => {
+        switch (p) {
+          case 'workers_ai':
+            return 'workers-ai';
+          case 'voyage':
+            return 'voyageai/v1';
+          case 'cohere':
+            return 'cohere/v2';
+          default:
+            return p;
+        }
+      },
     },
     ...overrides,
   } as unknown as Env;
@@ -73,16 +86,26 @@ describe('resolve()', () => {
     );
   });
 
-  it('returns Voyage rerank provider', () => {
+  it('returns Voyage rerank provider — bypasses CF gateway (unsupported provider, code 2008)', () => {
+    // Verified live against `gateway.ai.cloudflare.com/.../voyageai/v1/rerank`:
+    // CF AI Gateway returns `{code: 2008, message: "Invalid provider"}`
+    // regardless of URL shape. Bypassing keeps rerank functional at
+    // the cost of gateway analytics for this provider only. If a
+    // future operator's gateway supports Voyage, expand
+    // GATEWAY_SUPPORTED_PROVIDERS in registry.ts.
     const r = resolve(fakeEnv(), { provider: 'voyage', api_key: 'voy-x' });
     expect(r.rerank).toBeDefined();
-    expect(r.options.gateway?.provider).toBe('voyage');
+    expect(r.options.gateway).toBeUndefined();
+    expect(r.options.api_key).toBe('voy-x');
   });
 
-  it('returns Cohere rerank provider', () => {
+  it('returns Cohere rerank provider — gateway segment carries the v2/ prefix', () => {
+    // CF AI Gateway expects `<gw>/cohere/v2/rerank`; the providerSegment
+    // for cohere maps to `cohere/v2` so concatenation yields the right
+    // URL when the adapter sends path=`rerank`.
     const r = resolve(fakeEnv(), { provider: 'cohere', api_key: 'co-x' });
     expect(r.rerank).toBeDefined();
-    expect(r.options.gateway?.provider).toBe('cohere');
+    expect(r.options.gateway?.provider).toBe('cohere/v2');
   });
 
   it('omits gateway when the runtime adapter resolves no aiGateway', () => {

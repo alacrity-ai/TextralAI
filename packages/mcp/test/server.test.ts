@@ -8,8 +8,8 @@ import { allPrompts } from '../src/prompts/index.js';
 import { allResources } from '../src/resources/index.js';
 
 describe('@textral/mcp registries', () => {
-  it('ships exactly 21 tools', () => {
-    expect(allTools).toHaveLength(21);
+  it('ships exactly 24 tools', () => {
+    expect(allTools).toHaveLength(24);
   });
 
   it('ships 3 workflow prompts', () => {
@@ -37,12 +37,25 @@ describe('@textral/mcp registries', () => {
   it('every tool inputSchema is JSON Schema 7 with additionalProperties: false', () => {
     for (const t of allTools) {
       const schema = t.inputSchema as Record<string, unknown>;
-      expect(schema.type, t.name).toBe('object');
-      // Some schemas (e.g. those wrapping unions) may set
-      // additionalProperties at a nested level only; the top-level
-      // ZodObject form should still set it false on the root object.
-      if ('additionalProperties' in schema) {
-        expect(schema.additionalProperties, t.name).toBe(false);
+      // Most tools are top-level objects. Discriminated unions
+      // (e.g. `ingest_local_paths`) emit a top-level `oneOf` whose
+      // branches are each `type: 'object'`. Both shapes are valid
+      // JSON Schema 7 — the assertion forks on which form we got.
+      const branches =
+        (Array.isArray(schema.oneOf) ? schema.oneOf : null) ??
+        (Array.isArray(schema.anyOf) ? schema.anyOf : null);
+      if (branches) {
+        for (const branch of branches as Record<string, unknown>[]) {
+          expect(branch.type, t.name).toBe('object');
+          if ('additionalProperties' in branch) {
+            expect(branch.additionalProperties, t.name).toBe(false);
+          }
+        }
+      } else {
+        expect(schema.type, t.name).toBe('object');
+        if ('additionalProperties' in schema) {
+          expect(schema.additionalProperties, t.name).toBe(false);
+        }
       }
     }
   });
@@ -51,13 +64,16 @@ describe('@textral/mcp registries', () => {
     const names = allTools.map((t) => t.name).sort();
     expect(names).toEqual(
       [
+        'cancel_bulk_ingest_job',
         'create_namespace',
+        'get_bulk_ingest_job',
         'get_chunk',
         'get_document',
         'get_namespace',
         'get_query_event',
         'get_query_response',
         'ingest_file',
+        'ingest_local_paths',
         'list_chunks',
         'list_documents',
         'list_failing_jobs',

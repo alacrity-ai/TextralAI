@@ -19,6 +19,7 @@ import { EmptyState } from '../components/ui/EmptyState.js';
 import { ModelSelectField } from '../components/ui/ModelSelectField.js';
 import { ProviderKeySelectField } from '../components/ui/ProviderKeySelectField.js';
 import { IngestStreamLog } from '../components/IngestStreamLog.js';
+import { BulkIngestPanel } from '../components/bulk/BulkIngestPanel.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 import { useToast } from '../context/ToastContext.js';
 
@@ -68,6 +69,7 @@ export function Ingest() {
   const registry = useModelRegistry();
   const activeJobs = useActiveJobs();
   const [file, setFile] = useState<File | null>(null);
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [dispatching, setDispatching] = useState(false);
   // Track the job id this page-session most recently dispatched. The
@@ -110,9 +112,29 @@ export function Ingest() {
 
   function takeFile(f: File | null) {
     setFile(f);
+    setBulkFiles([]);
     if (f && !form.title) {
       const nameSansExt = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ');
       patch('title', nameSansExt);
+    }
+  }
+
+  /** Drop or pick handler for multi-file selection. 1 file → single
+   *  ingest flow (unchanged). 2+ files → bulk panel. */
+  function takeFiles(fs: File[]) {
+    if (fs.length === 0) return;
+    if (fs.length === 1) {
+      takeFile(fs[0]!);
+      return;
+    }
+    setFile(null);
+    setBulkFiles(fs);
+  }
+
+  function clearBulk() {
+    setBulkFiles([]);
+    if (window.location.hash.startsWith('#bulk=')) {
+      window.location.hash = '';
     }
   }
 
@@ -212,6 +234,26 @@ export function Ingest() {
     );
   }
 
+  // Bulk mode — 2+ files selected. Routes through the bulk API and
+  // owns its own progress UI. Existing single-file flow stays
+  // untouched below.
+  if (bulkFiles.length > 0) {
+    return (
+      <div style={pageStyle}>
+        <PageHeader
+          title="Bulk ingest"
+          subtitle={`Apply one shared embedding + chunking config to ${bulkFiles.length} files in namespace ${active.slug}.`}
+        />
+        <BulkIngestPanel
+          files={bulkFiles}
+          namespaceSlug={active.slug}
+          namespaceDimensions={active.embedding_dimensions}
+          onClear={clearBulk}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={pageStyle}>
       <div
@@ -265,8 +307,8 @@ export function Ingest() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              const f = e.dataTransfer.files[0];
-              if (f) takeFile(f);
+              const fs = Array.from(e.dataTransfer.files);
+              takeFiles(fs);
             }}
             onClick={() => fileInputRef.current?.click()}
             style={{
@@ -310,9 +352,10 @@ export function Ingest() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".md,.markdown,.txt,text/markdown,text/plain"
+              multiple
+              accept=".md,.markdown,.txt,.pdf,.json,.yaml,.yml,text/markdown,text/plain,application/pdf"
               hidden
-              onChange={(e) => takeFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => takeFiles(Array.from(e.target.files ?? []))}
             />
           </div>
 

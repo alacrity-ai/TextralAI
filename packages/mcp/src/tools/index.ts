@@ -19,6 +19,11 @@ import {
 } from './infra-keys.js';
 import { listFailingJobs, retryFailingJob } from './ops.js';
 import { listModels } from './models.js';
+import {
+  ingestLocalPaths,
+  getBulkIngestJob,
+  cancelBulkIngestJob,
+} from './bulk-ingest.js';
 
 export const allTools: ToolDef[] = [
   // namespaces
@@ -47,6 +52,10 @@ export const allTools: ToolDef[] = [
   // operations
   listFailingJobs,
   retryFailingJob,
+  // bulk ingest (Phase 2 — local FS multi-file)
+  ingestLocalPaths,
+  getBulkIngestJob,
+  cancelBulkIngestJob,
   // meta
   listModels,
 ] as ToolDef[];

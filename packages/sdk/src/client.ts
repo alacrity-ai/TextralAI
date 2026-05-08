@@ -41,35 +41,36 @@ export interface TextralClientOptions {
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
 
-interface QueryEventListResponse {
+export interface QueryEventListResponse {
   data: QueryEvent[];
   next_cursor: string | null;
 }
-interface DocumentListResponse {
+export interface DocumentListResponse {
   data: Document[];
   next_cursor: string | null;
 }
-interface ChunkListResponse {
+export interface ChunkListResponse {
   data: Chunk[];
   next_cursor: string | null;
 }
-interface FailingJobsResponse {
+export interface FailingJobsResponse {
   items: IngestionJob[];
   next_cursor: string | null;
 }
 
-interface MeResponse {
+export interface MeResponse {
   tenant: { id: string; display_name: string; plan: string; created_at: number };
   api_key_id: string;
+  runtime: 'cf' | 'node';
 }
 
-interface ProviderKeyTestResponse {
+export interface ProviderKeyTestResponse {
   ok: boolean;
   error_code?: string;
   error_message?: string;
 }
 
-interface IngestionJobCreateResponse {
+export interface IngestionJobCreateResponse {
   job_id: string;
   status: string;
   version_index_id: string;

@@ -25,7 +25,7 @@ operations as named tool calls.
                                          │ MCP / stdio or HTTP
                                          ▼
                            ┌───────────────────────────────┐
-                           │   Textral MCP server          │  16 tools
+                           │   Textral MCP server          │  19 tools
                            │   (@textral/mcp)              │  3 prompts
                            └─────────────┬─────────────────┘  3 resources
                                          │ HTTPS REST
@@ -96,11 +96,13 @@ curl -H "X-Textral-Api-Key: $SELFHOST_API_KEY" http://localhost:8787/v1/me
 open http://localhost:5173
 
 # Or wire it into Claude Code:
-claude mcp add textral \
+claude mcp add textral --scope user \
   --env TEXTRAL_BASE_URL=http://localhost:8787 \
   --env TEXTRAL_API_KEY=$SELFHOST_API_KEY \
-  -- npx @textral/mcp
+  -- npx -y @textral/mcp
 ```
+
+For multi-environment users, drop a `~/.textral/profiles.toml` and add the MCP without env vars; see [`docs/mcp/QUICKSTART.md`](docs/mcp/QUICKSTART.md) for the resolution chain.
 
 Detailed setup paths:
 

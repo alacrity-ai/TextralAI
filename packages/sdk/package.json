@@ -1,23 +1,55 @@
 {
   "name": "@textral/sdk",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
   "type": "module",
-  "main": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
+  "description": "TypeScript REST client for the Textral RAG API. Pairs with @textral/contracts.",
+  "license": "MIT",
+  "author": "Alacrity AI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alacrity-ai/TextralAI.git",
+    "directory": "packages/sdk"
   },
+  "homepage": "https://github.com/alacrity-ai/TextralAI/tree/main/packages/sdk#readme",
+  "bugs": {
+    "url": "https://github.com/alacrity-ai/TextralAI/issues"
+  },
+  "keywords": [
+    "textral",
+    "sdk",
+    "rag",
+    "rest-client"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run"
   },
   "dependencies": {
-    "@textral/contracts": "workspace:*",
+    "@textral/contracts": "workspace:^0.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
     "vitest": "~3.2.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

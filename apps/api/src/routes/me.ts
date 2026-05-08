@@ -44,6 +44,7 @@ meRoute.openapi(getMe, async (c) => {
         created_at: tenant.created_at,
       },
       api_key_id: apiKeyId,
+      runtime: c.env.runtime,
     },
     200,
   );

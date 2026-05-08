@@ -16,3 +16,4 @@ tools/dev-seed.env
 .DS_Store
 coverage
 reference_repos/
+SCRATCH/

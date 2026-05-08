@@ -64,9 +64,16 @@ describe('auth middleware', () => {
     );
     await waitOnExecutionContext(ctx);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { tenant: { id: string }; api_key_id: string };
+    const body = (await res.json()) as {
+      tenant: { id: string };
+      api_key_id: string;
+      runtime: 'cf' | 'node';
+    };
     expect(body.tenant.id).toBe('ten_alice');
     expect(body.api_key_id).toBe(key.id);
+    // CF test runtime always reports 'cf' from c.env.runtime; the
+    // node-runtime self-host bindings populate 'node' equivalently.
+    expect(body.runtime).toBe('cf');
   });
 
   it('rejects a revoked key', async () => {

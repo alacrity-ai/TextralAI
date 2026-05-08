@@ -549,25 +549,39 @@ switchover.`,
 MCP-compatible agent client (Claude Code, Cursor, Windsurf, Cline,
 internal orchestrators) can drive it as a node in agentic pipelines.
 
-The server publishes 16 tools, 3 workflow prompts, and 3 resources.
-Every tool routes through the canonical REST surface above —
-tenant scoping, redaction, and audit policy apply identically.
+The server publishes 19 tools (17 data + 2 profile-control), 3
+workflow prompts, and 3 resources. Every data tool routes through
+the canonical REST surface above — tenant scoping, redaction, and
+audit policy apply identically.
+
+**Install:**
+\`\`\`
+claude mcp add textral --scope user -- npx -y @textral/mcp
+\`\`\`
 
 **Two transports:**
 
 - \`POST /v1/mcp\` — embedded transport, mounted in-process on the
-  Node runtime (self-host). Uses the same \`X-Textral-Api-Key\`
-  header as the rest of the v1 surface. Cloudflare-runtime
-  deploys return 501 NOT_IMPLEMENTED in Phase 1; use stdio there.
-- \`npx @textral/mcp\` — stdio CLI binary. Boots from
-  \`TEXTRAL_BASE_URL\` + \`TEXTRAL_API_KEY\` env vars and serves
-  JSON-RPC over stdio against any backend (CF or self-host).
+  Node self-host runtime. Same \`X-Textral-Api-Key\` header as the
+  v1 surface. Cloudflare-runtime deploys return 501 NOT_IMPLEMENTED;
+  use stdio there.
+- \`npx -y @textral/mcp\` — stdio CLI binary, published to npm.
+  Reads its config from \`~/.textral/profiles.toml\` (multi-profile)
+  or \`TEXTRAL_BASE_URL\` + \`TEXTRAL_API_KEY\` env vars
+  (single-profile). Works against any HTTPS Textral URL — CF or
+  self-host.
+
+**Profiles** let one MCP serve multiple Textral deployments
+(local-stage, local-prod, hosted-prod, …) from one Claude session.
+The active profile is mutable mid-session via the
+\`textral_set_profile({ name })\` tool. There is no per-call
+profile parameter — switching is always intentional and stateful.
 
 The MCP protocol exposes capabilities via JSON-RPC envelopes (not
 OpenAPI), so individual tools/prompts/resources don't appear in
 this reference. See **docs/mcp/QUICKSTART.md** for client setup,
-the full tool list, the workflow prompts, and the audit
-configuration.`,
+the full tool list, the profile config, the workflow prompts, and
+the audit configuration.`,
 };
 
 /** Convenience: the tags we want a description for, in display order

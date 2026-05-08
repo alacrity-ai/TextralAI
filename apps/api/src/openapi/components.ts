@@ -71,6 +71,10 @@ export const MeResponse = z
       created_at: z.number().int(),
     }),
     api_key_id: z.string(),
+    /** Runtime the API is running on. `cf` = Cloudflare Workers,
+     *  `node` = self-host Node. MCP V2 reads this at profile-load
+     *  time to gate any tools that have CF-runtime limitations. */
+    runtime: z.enum(['cf', 'node']),
   })
   .openapi('MeResponse');
 

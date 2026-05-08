@@ -7,48 +7,83 @@ resources. Every tool routes through the canonical REST API at
 `/v1/*`, so tenant scoping, redaction, and audit policies apply
 identically to both surfaces.
 
-## Path A — local Claude Code (stdio)
+## Cloudflare runtime compatibility
 
-### A.1 — Local workspace checkout (Phase 1, today)
+Every `@textral/mcp` tool works against both self-host (Node) and
+Cloudflare deployments. The MCP V2 smoke harness
+(`apps/api/test/mcp-cf-smoke.test.ts`) exercises every tool's
+underlying REST call against a deployed worker; the green list
+covers the full v0.1.0 tool surface:
 
-`@textral/mcp` is `private: true` in Phase 1 — `npm publish` happens
-in Phase 2. Until then, point Claude Code at the bin shim in your
-checkout. The shim uses tsx's programmatic API to run the TypeScript
-source directly; you don't need a build step.
+| Tool | CF | Self-host | Notes |
+|---|---|---|---|
+| `list_models` | ✓ | ✓ | |
+| `list_namespaces` | ✓ | ✓ | |
+| `get_namespace` | ✓ | ✓ | |
+| `create_namespace` | ✓ | ✓ | Vectorize provisioning is a no-op (binding is global). |
+| `list_documents` | ✓ | ✓ | |
+| `get_document` | ✓ | ✓ | |
+| `list_chunks` | ✓ | ✓ | |
+| `get_chunk` | ✓ | ✓ | |
+| `ingest_file` | ✓ | ✓ | R2 streaming + Container handoff verified. |
+| `query` | ✓ | ✓ | Hybrid retrieval + AI Gateway routing verified. |
+| `get_query_event` | ✓ | ✓ | |
+| `get_query_response` | ✓ | ✓ | 410 `QUERY_RESPONSE_UNAVAILABLE` is a documented response, not a CF gap. |
+| `list_query_events` | ✓ | ✓ | |
+| `list_provider_keys` | ✓ | ✓ | |
+| `register_provider_key` | ✓ | ✓ | |
+| `list_failing_jobs` | ✓ | ✓ | |
+| `retry_failing_job` | ✓ | ✓ | |
+
+The MCP server detects the runtime at profile-load time via
+`/v1/me`'s `runtime: 'cf' | 'node'` field and surfaces clear errors
+before dispatching any tool that has runtime-specific limitations.
+
+The HTTP transport (`POST /v1/mcp`) is **only** available on the
+Node self-host runtime; Cloudflare deploys use the stdio transport
+exclusively. Stdio works against any HTTPS Textral URL — it covers
+Claude Code, Cursor, Windsurf, Cline, and every other MCP client.
+
+To re-run the smoke harness against the live deploy:
 
 ```bash
-claude mcp add textral \
+MCP_SMOKE_CF=1 \
+MCP_SMOKE_KEY=tx_live_… \
+  pnpm --filter @textral/api test mcp-cf-smoke
+```
+
+(Optional: `MCP_SMOKE_BASE_URL`, `MCP_SMOKE_NAMESPACE` to override
+defaults.)
+
+## Path A — Claude Code (stdio, recommended)
+
+```bash
+claude mcp add textral --scope user -- npx -y @textral/mcp
+```
+
+That's it. No clone, no build step, no absolute paths. `npx` resolves the latest `@textral/mcp` from npm on every spawn. Configure with a profile file (see "Profiles" below) or with env vars on the launch command for the single-tenant case:
+
+```bash
+claude mcp add textral --scope user \
   --env TEXTRAL_BASE_URL=http://localhost:8787 \
   --env TEXTRAL_API_KEY=tx_live_… \
-  -- node /absolute/path/to/textral/packages/mcp/bin/textral-mcp.mjs
+  -- npx -y @textral/mcp
 ```
 
-e.g.
-```bash
-claude mcp add textral \
-  --scope user \
-  --env TEXTRAL_BASE_URL=http://localhost:8787 \
-  --env TEXTRAL_API_KEY=tx_live_01KQV8KFHF83QRTQNC86AQ619G_WYHSUF4XHNF3ASY3RBVEZWRLSFN4JRK4 \
-  -- node /home/leif/textral/TEXTRAL_REFACTOR_WIP/packages/mcp/bin/textral-mcp.mjs
-```
+The MCP process holds the key. Claude Code never sees it. Each request flows out as `X-Textral-Api-Key: $TEXTRAL_API_KEY` to your Textral deploy.
 
-Prerequisite: `pnpm install` from the workspace root (puts `tsx` in
-`packages/mcp/node_modules`).
-
-### A.2 — Published package (Phase 2 onward)
-
-After `@textral/mcp` ships to npm:
+### Pinning a version
 
 ```bash
-claude mcp add textral \
-  --env TEXTRAL_BASE_URL=http://localhost:8787 \
-  --env TEXTRAL_API_KEY=tx_live_… \
-  -- npx @textral/mcp
+claude mcp add textral --scope user -- npx -y @textral/mcp@0.1.0
 ```
 
-The MCP process holds the key in env. Claude Code never sees it.
-Each request from the agent flows out as `X-Textral-Api-Key: $TEXTRAL_API_KEY`
-to your Textral deploy.
+### Globally installed (if you want spawn speed)
+
+```bash
+npm install -g @textral/mcp
+claude mcp add textral --scope user -- textral-mcp
+```
 
 ## Path B — Cursor / Windsurf / Cline (JSON config)
 
@@ -57,7 +92,7 @@ to your Textral deploy.
   "mcpServers": {
     "textral": {
       "command": "npx",
-      "args": ["@textral/mcp"],
+      "args": ["-y", "@textral/mcp"],
       "env": {
         "TEXTRAL_BASE_URL": "https://api.textral.example.com",
         "TEXTRAL_API_KEY": "tx_live_…"
@@ -67,11 +102,11 @@ to your Textral deploy.
 }
 ```
 
-## Path C — embedded `/mcp` (production self-host)
+For multi-environment, drop the `env` block and rely on `~/.textral/profiles.toml`.
 
-The Node-runtime self-host stack mounts the MCP server in-process at
-`POST /v1/mcp`. Same auth (`X-Textral-Api-Key`) as `/v1/*`; no
-separate process, no separate container.
+## Path C — embedded `/mcp` (Node self-host only)
+
+The Node-runtime self-host stack mounts the MCP server in-process at `POST /v1/mcp`. Same auth (`X-Textral-Api-Key`) as `/v1/*`; no separate process, no separate container.
 
 ```json
 {
@@ -84,20 +119,74 @@ separate process, no separate container.
 }
 ```
 
-The Cloudflare runtime returns 501 NOT_IMPLEMENTED on `/v1/mcp` in
-Phase 1 — use Path A or B against a CF-managed Textral. Embedded CF
-support arrives once we've validated the Streamable HTTP transport
-against workerd's long-lived stream semantics.
+The embedded HTTP transport is **only** available on the Node self-host runtime; Cloudflare deploys return 501 NOT_IMPLEMENTED on `/v1/mcp`. Use Path A or B against a CF-managed Textral. (Stdio works against any HTTPS Textral URL — including CF.)
 
-## Tool surface (Phase 1 ship list)
+## Profiles — multiple Textrals from one Claude session
+
+Drop a `~/.textral/profiles.toml`:
+
+```toml
+default = "hosted-prod"
+
+[profiles.local]
+base_url = "http://localhost:8787"
+api_key  = "tx_live_…"
+
+[profiles.local-stage]
+base_url = "http://localhost:9000"
+api_key  = "tx_live_…"
+
+[profiles.hosted-prod]
+base_url = "https://textral-api-dev.leif-e24.workers.dev"
+api_key  = "tx_live_…"
+```
+
+Then add the MCP without env vars:
+
+```bash
+claude mcp add textral --scope user -- npx -y @textral/mcp
+```
+
+**Resolution precedence (tightest → loosest):**
+
+1. `TEXTRAL_PROFILE=hosted-prod` env var on the MCP launch command
+2. `default = "hosted-prod"` field in the profile file
+3. Lexicographically first profile name in `[profiles.*]`
+4. Synthesized `_env` profile from `TEXTRAL_BASE_URL` + `TEXTRAL_API_KEY` (only when no profile file exists)
+5. Hard fail with a help message
+
+**Two new tools** are exposed for switching mid-session:
+
+- `textral_get_profile` — returns the active profile and the available list. Useful for "which env am I in?"
+- `textral_set_profile({ name })` — flips the active profile. All subsequent tool calls use the new profile. Probe-fails atomically: a bad switch leaves the prior profile active. Probe runs `/v1/me` against the new profile's base URL.
+
+**Cross-environment queries** are explicit two-step calls:
+
+```
+User: "List my namespaces in stage and in prod."
+  → textral_set_profile({ name: "local-stage" })
+  → textral_list_namespaces()
+  → textral_set_profile({ name: "hosted-prod" })
+  → textral_list_namespaces()
+```
+
+There is **no** per-call `profile?: string` parameter on the tool inputs. Every token Claude would spend inferring "what env did the user mean?" is wasted; switching is always intentional and stateful.
+
+**File permissions:** recommend `chmod 600 ~/.textral/profiles.toml`. The server warns at startup if the file is group- or world-readable; the API keys are bearer credentials.
+
+**`TEXTRAL_CONFIG_DIR`** env var overrides the location (`~/.textral` by default). Useful for ephemeral CI / sandboxed test environments.
+
+## Tool surface
 
 | Surface | Tools |
 |---|---|
+| Profile control | `textral_get_profile`, `textral_set_profile` |
 | Namespaces | `create_namespace`, `list_namespaces`, `get_namespace` |
 | Documents + ingest | `ingest_file`, `list_documents`, `get_document`, `list_chunks`, `get_chunk` |
 | Query | `query`, `list_query_events`, `get_query_event`, `get_query_response` |
 | Provider keys (BYOK) | `register_provider_key`, `list_provider_keys` |
 | Operations | `list_failing_jobs`, `retry_failing_job` |
+| Meta | `list_models` |
 
 `ingest_file` is the headline: it collapses the four-step REST chain
 (register → upload → finalize → ingest) into one call. Pass
@@ -115,7 +204,7 @@ fs tools, a co-mounted filesystem MCP server) handles file IO.
 |---|---|
 | `ingest_directory` | Walks the agent through a bulk-ingest of a local directory into a namespace. |
 | `compare_retrieval_configs` | Runs the same query under two retrieval configs and produces a markdown diff. |
-| `evaluate_namespace` | Phase 2 placeholder — full implementation lands with sandbox eval support. |
+| `evaluate_namespace` | Walks the agent through eval-set-driven retrieval evaluation against a namespace. |
 
 ## Resources
 
@@ -153,10 +242,10 @@ export SELFHOST_API_KEY=tx_live_...
 make mcp-validate
 
 # 3. Or wire it into Claude Code.
-claude mcp add textral \
+claude mcp add textral --scope user \
   --env TEXTRAL_BASE_URL=http://localhost:8787 \
   --env TEXTRAL_API_KEY=$SELFHOST_API_KEY \
-  -- npx @textral/mcp
+  -- npx -y @textral/mcp
 ```
 
 `make mcp-validate` runs the cookbook validator
@@ -169,8 +258,10 @@ audit-row visible → mirror replay → document list → chunk fetch.
 | Symptom | Likely cause |
 |---|---|
 | `INVALID_API_KEY` 401 | Env var missing/typo, or the key's been revoked. |
-| Embedded `/v1/mcp` returns 501 | You're hitting the CF runtime; Phase 1 ships embedded only on Node. Switch to stdio (Path A). |
+| Embedded `/v1/mcp` returns 501 | You're hitting the CF runtime; embedded HTTP is Node self-host only. Switch to stdio (Path A). |
 | `ingest_file` rejects with `BAD_REQUEST: too large` | Default cap is 25 MiB; chunk the upload. |
 | Tool not visible in client | Confirm you're on the latest `@textral/mcp` and that your client revalidates the tool list per session. |
-| Claude Code shows "Failed to reconnect to textral" with `npx @textral/mcp` | Phase 1: the package is `private: true`. Use Path A.1 above (`node /absolute/path/.../bin/textral-mcp.mjs`) until Phase 2 publishes. |
-| `failed to load tsx loader` from the shim | Run `pnpm install` from the workspace root — `tsx` is a devDep of `@textral/mcp` and must be present in `packages/mcp/node_modules`. |
+| `No Textral profile configured` at startup | Either create `~/.textral/profiles.toml` (see "Profiles") or set `TEXTRAL_BASE_URL` + `TEXTRAL_API_KEY` env vars on the launch command. |
+| `Profile "X" not found. Available: …` | The named profile isn't in your `~/.textral/profiles.toml`. Check spelling and the `[profiles.<name>]` table headings. |
+| `npx -y @textral/mcp` resolves to an old version | npx caches by version; pin with `@textral/mcp@<version>` or run `npx clear-npx-cache`. |
+| Permission warning at startup (`mode 0644; recommend chmod 600`) | Run `chmod 600 ~/.textral/profiles.toml` to silence and protect your bearer credentials. |

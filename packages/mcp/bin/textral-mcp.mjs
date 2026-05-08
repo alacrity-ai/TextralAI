@@ -1,58 +1,72 @@
 #!/usr/bin/env node
 // Stdio MCP server entrypoint.
 //
-// In dev mode this shim uses tsx's programmatic `tsImport` API to
-// load the TypeScript transport-stdio module directly. For published
-// builds, ship a compiled dist/transport-stdio.js and update the
-// import to point at it.
+// Two modes, picked by filesystem fact:
+//   1. Production (published install): import compiled JS from dist/.
+//   2. Dev (repo contributors): fall back to tsx's tsImport API on
+//      src/transport-stdio.ts. Only triggered when src/ exists, which
+//      is never true in a published install (`files` whitelist excludes
+//      src/), so the fallback never runs in production.
 //
-// MCP clients (Claude Code, Cursor) spawn this process from their
-// own cwd, so all paths are resolved relative to *this file's
-// location*, not process.cwd().
+// MCP clients (Claude Code, Cursor) spawn this process from their own
+// cwd, so all paths are resolved relative to *this file's location*.
+//
+// Profile resolution lives downstream in src/profiles.ts; the shim
+// only locates and dispatches to startStdio().
 
-import { pathToFileURL, fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
-import { createRequire } from 'node:module';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
-const baseUrl = process.env.TEXTRAL_BASE_URL;
-const apiKey = process.env.TEXTRAL_API_KEY;
-if (!baseUrl || !apiKey) {
+const here = dirname(fileURLToPath(import.meta.url));
+const distPath = resolve(here, '..', 'dist', 'transport-stdio.js');
+const srcPath = resolve(here, '..', 'src', 'transport-stdio.ts');
+
+let startStdio;
+if (existsSync(distPath)) {
+  ({ startStdio } = await import(pathToFileURL(distPath).href));
+} else if (existsSync(srcPath)) {
+  // Dev mode — repo contributor running from source. Requires tsx as
+  // a devDependency. Never reached in a published install (src/ isn't
+  // shipped to npm).
+  let tsImport;
+  try {
+    ({ tsImport } = await import('tsx/esm/api'));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(
+      '@textral/mcp: dev mode requires tsx. Run `pnpm install` from the workspace root.\n' +
+        '  underlying error: ' +
+        msg,
+    );
+    process.exit(2);
+  }
+  ({ startStdio } = await tsImport(pathToFileURL(srcPath).href, import.meta.url));
+} else {
   console.error(
-    '@textral/mcp: TEXTRAL_BASE_URL and TEXTRAL_API_KEY must be set.\n' +
-      '  example:\n' +
-      '    TEXTRAL_BASE_URL=http://localhost:8787 \\\n' +
-      '    TEXTRAL_API_KEY=tx_live_… \\\n' +
-      '      node /path/to/packages/mcp/bin/textral-mcp.mjs',
+    '@textral/mcp: neither dist/transport-stdio.js nor src/transport-stdio.ts found. ' +
+      'The install is corrupt — try reinstalling the package.',
   );
   process.exit(2);
 }
 
-const shimDir = dirname(fileURLToPath(import.meta.url));
-const transportUrl = pathToFileURL(
-  resolve(shimDir, '..', 'src', 'transport-stdio.ts'),
-).href;
-
-// Resolve tsx's `tsImport` from this package's node_modules so the
-// shim works regardless of cwd. The require lookup is rooted at this
-// shim's location.
-const requireFromShim = createRequire(import.meta.url);
-let tsImport;
+// startStdio() reads its config from one of (in resolution order):
+//   1. TEXTRAL_PROFILE env var pointing at a profile in
+//      ~/.textral/profiles.toml
+//   2. `default` field in ~/.textral/profiles.toml
+//   3. Lexicographically first profile in the file
+//   4. A synthesized `_env` profile from TEXTRAL_BASE_URL +
+//      TEXTRAL_API_KEY env vars (legacy single-tenant path)
+//   5. Hard fail with a help message
+//
+// The shim doesn't pre-resolve any of these — it just hands off and
+// lets profiles.ts produce a clear error if nothing is configured.
 try {
-  const tsxApiPath = requireFromShim.resolve('tsx/esm/api');
-  ({ tsImport } = await import(pathToFileURL(tsxApiPath).href));
+  await startStdio();
 } catch (e) {
-  const msg = e instanceof Error ? e.message : String(e);
-  console.error(
-    '@textral/mcp: failed to load tsx loader: ' + msg + '\n' +
-      "Run `pnpm install` from the workspace root to install @textral/mcp's devDependencies.",
-  );
-  process.exit(2);
-}
-
-try {
-  const { startStdio } = await tsImport(transportUrl, import.meta.url);
-  await startStdio({ baseUrl, apiKey });
-} catch (e) {
-  console.error('@textral/mcp failed to start:', e);
+  // The resolver throws Error subclasses with full help-message text
+  // for the no-config case (no file, no env vars). Print the message
+  // verbatim and exit 2.
+  console.error('@textral/mcp failed to start:', e instanceof Error ? e.message : e);
   process.exit(2);
 }

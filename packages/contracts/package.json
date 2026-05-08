@@ -1,13 +1,42 @@
 {
   "name": "@textral/contracts",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
   "type": "module",
-  "main": "src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
+  "description": "Zod schemas + TypeScript contracts for the Textral REST API. Used by @textral/sdk and @textral/mcp.",
+  "license": "MIT",
+  "author": "Alacrity AI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alacrity-ai/TextralAI.git",
+    "directory": "packages/contracts"
   },
+  "homepage": "https://github.com/alacrity-ai/TextralAI/tree/main/packages/contracts#readme",
+  "bugs": {
+    "url": "https://github.com/alacrity-ai/TextralAI/issues"
+  },
+  "keywords": [
+    "textral",
+    "zod",
+    "contracts",
+    "rag"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run"
@@ -19,5 +48,8 @@
   "devDependencies": {
     "typescript": "^5.6.0",
     "vitest": "~3.2.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

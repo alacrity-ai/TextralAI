@@ -1,25 +1,61 @@
 {
   "name": "@textral/mcp",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "private": false,
   "type": "module",
+  "description": "MCP (Model Context Protocol) server for Textral. Stdio transport; multi-profile addressing; works against Cloudflare and self-host deployments.",
+  "license": "MIT",
+  "author": "Alacrity AI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alacrity-ai/TextralAI.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/alacrity-ai/TextralAI/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/alacrity-ai/TextralAI/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "textral",
+    "rag",
+    "llm",
+    "claude"
+  ],
   "bin": {
     "textral-mcp": "./bin/textral-mcp.mjs"
   },
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./http": "./src/transport-http.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/transport-http.d.ts",
+      "import": "./dist/transport-http.js"
+    }
   },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@textral/contracts": "workspace:*",
-    "@textral/sdk": "workspace:*",
+    "@textral/contracts": "workspace:^0.1.0",
+    "@textral/sdk": "workspace:^0.1.0",
+    "smol-toml": "^1.3.1",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.25.0"
   },
@@ -28,5 +64,8 @@
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "~3.2.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

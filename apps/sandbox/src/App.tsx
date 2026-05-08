@@ -7,6 +7,8 @@ import { ProviderKeyRegistryProvider } from './context/ProviderKeyRegistryContex
 import { InfraKeyRegistryProvider } from './context/InfraKeyRegistryContext.js';
 import { ActiveJobsProvider } from './context/ActiveJobsContext.js';
 import { IngestHistory } from './pages/IngestHistory.js';
+import { BulkJobs } from './pages/BulkJobs.js';
+import { BulkJobDetail } from './pages/BulkJobDetail.js';
 import { ToastProvider } from './context/ToastContext.js';
 import { ConfirmProvider } from './context/ConfirmContext.js';
 import { AppShell } from './components/layout/AppShell.js';
@@ -50,6 +52,8 @@ export function App() {
                                   <Route path="/history" element={<QueryHistory />} />
                                   <Route path="/ingest" element={<Ingest />} />
                                   <Route path="/ingest/history" element={<IngestHistory />} />
+                                  <Route path="/ingest/bulk" element={<BulkJobs />} />
+                                  <Route path="/ingest/bulk/:id" element={<BulkJobDetail />} />
                                   <Route path="/compare" element={<Compare />} />
                                   <Route path="/namespaces" element={<NamespaceList />} />
                                   <Route path="/documents" element={<DocumentInspector />} />

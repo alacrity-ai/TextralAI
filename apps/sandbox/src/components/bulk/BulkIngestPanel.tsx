@@ -15,10 +15,17 @@ import { useToast } from '../../context/ToastContext.js';
 import { colors, fonts, radii, spacing } from '../../styles/tokens.js';
 
 interface BulkIngestPanelProps {
+  /** Files chosen by the user. Required for fresh-upload flow;
+   *  empty in resume mode (the bytes already live on the server). */
   files: File[];
   namespaceSlug: string;
   namespaceDimensions: number;
   onClear: () => void;
+  /** When set, the panel skips the configuring phase and polls
+   *  the given bulk job. Used by the /ingest/bulk/:id resume
+   *  route. The `files` prop is ignored in this mode (we render
+   *  the per-file table from the server's bulk_job_files data). */
+  resumeBulkJobId?: string;
 }
 
 interface FormState {
@@ -138,17 +145,21 @@ export function BulkIngestPanel({
   namespaceSlug,
   namespaceDimensions,
   onClear,
+  resumeBulkJobId,
 }: BulkIngestPanelProps) {
   const { showToast } = useToast();
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [phase, setPhase] = useState<
     'configuring' | 'submitting' | 'uploading' | 'awaiting_confirm' | 'finalizing' | 'polling' | 'done'
-  >('configuring');
-  const [bulkJobId, setBulkJobId] = useState<string | null>(null);
+  >(resumeBulkJobId ? 'polling' : 'configuring');
+  const [bulkJobId, setBulkJobId] = useState<string | null>(
+    resumeBulkJobId ?? null,
+  );
   const [status, setStatus] = useState<BulkJobStatus | null>(null);
   const [perFile, setPerFile] = useState<BulkJobFile[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const isResumeMode = Boolean(resumeBulkJobId);
 
   const totalBytes = useMemo(
     () => files.reduce((s, f) => s + f.size, 0),
@@ -156,13 +167,40 @@ export function BulkIngestPanel({
   );
 
   // Resume an in-flight job if there's a bulk_job_id in the URL hash.
+  // Skipped when explicit resumeBulkJobId is set — that prop wins.
   useEffect(() => {
+    if (resumeBulkJobId) return;
     const m = window.location.hash.match(/bulk=([^&]+)/);
     if (m && !bulkJobId) {
       setBulkJobId(m[1]!);
       setPhase('polling');
     }
-  }, [bulkJobId]);
+  }, [bulkJobId, resumeBulkJobId]);
+
+  // When a resumed job's status arrives, infer the right phase from
+  // its server-side state. This is the bridge between "we just
+  // landed on /ingest/bulk/:id" and "show the user the right action
+  // button." Without this, the panel sits in 'polling' forever and
+  // never surfaces the Confirm button for awaiting_confirm jobs.
+  useEffect(() => {
+    if (!isResumeMode || !status) return;
+    const allUploaded =
+      status.counts.pending === 0 &&
+      status.counts.uploaded > 0 &&
+      status.counts.uploaded === status.total_files;
+    if (status.state === 'uploading' && allUploaded) {
+      setPhase('awaiting_confirm');
+    } else if (TERMINAL_STATES.has(status.state)) {
+      setPhase('done');
+    } else if (
+      status.state === 'finalizing' ||
+      status.state === 'processing' ||
+      status.state === 'accepted' ||
+      status.state === 'uploading'
+    ) {
+      setPhase('polling');
+    }
+  }, [isResumeMode, status]);
 
   // Poll the bulk job until terminal.
   useEffect(() => {
@@ -305,17 +343,27 @@ export function BulkIngestPanel({
               color: colors.textPrimary,
             }}
           >
-            Bulk ingest — {files.length} files
+            Bulk ingest — {status?.total_files ?? files.length} files
           </div>
           <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
-            {(totalBytes / 1024 / 1024).toFixed(2)} MB total · namespace{' '}
+            {files.length > 0 && (
+              <>{(totalBytes / 1024 / 1024).toFixed(2)} MB total · </>
+            )}
+            namespace{' '}
             <code style={{ fontFamily: fonts.mono }}>{namespaceSlug}</code> ·{' '}
             <code style={{ fontFamily: fonts.mono }}>{namespaceDimensions}</code>-d
+            {bulkJobId && (
+              <>
+                {' '}· <code style={{ fontFamily: fonts.mono }}>{bulkJobId}</code>
+              </>
+            )}
           </div>
         </div>
-        <Button onClick={onClear} disabled={inFlight && !terminal}>
-          Clear
-        </Button>
+        {!isResumeMode && (
+          <Button onClick={onClear} disabled={inFlight && !terminal}>
+            Clear
+          </Button>
+        )}
       </div>
 
       {phase === 'configuring' && (
@@ -487,6 +535,29 @@ interface BulkFileTableProps {
 
 function BulkFileTable({ files, perFile }: BulkFileTableProps) {
   const stateByOrdinal = new Map(perFile.map((f) => [f.ordinal, f]));
+  // Resume-mode: no `files: File[]` in scope. Render rows from the
+  // server's bulk_job_files data (which has filename + size_bytes).
+  // Fresh-upload mode: zip with `files` so the table shows local
+  // names even before the first poll lands.
+  const rows: Array<{
+    ordinal: number;
+    filename: string;
+    size_bytes: number;
+    server: BulkJobFile | undefined;
+  }> =
+    files.length > 0
+      ? files.map((f, i) => ({
+          ordinal: i,
+          filename: f.name,
+          size_bytes: f.size,
+          server: stateByOrdinal.get(i),
+        }))
+      : perFile.map((p) => ({
+          ordinal: p.ordinal,
+          filename: p.filename,
+          size_bytes: p.size_bytes,
+          server: p,
+        }));
   return (
     <div
       style={{
@@ -517,32 +588,29 @@ function BulkFileTable({ files, perFile }: BulkFileTableProps) {
         <div>state</div>
       </div>
       <div style={{ maxHeight: 320, overflow: 'auto' }}>
-        {files.map((f, i) => {
-          const row = stateByOrdinal.get(i);
-          return (
-            <div
-              key={i}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '32px 1fr 90px 100px',
-                gap: spacing.sm,
-                padding: '8px 12px',
-                fontSize: 13,
-                color: colors.textPrimary,
-                fontFamily: fonts.mono,
-                borderBottom: `1px solid ${colors.border}`,
-              }}
-              title={row?.error_detail ?? undefined}
-            >
-              <div style={{ color: colors.textMuted }}>{i}</div>
-              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {f.name}
-              </div>
-              <div style={{ color: colors.textMuted }}>{(f.size / 1024).toFixed(1)} KB</div>
-              <div>{stateChip(row?.state ?? 'pending')}</div>
+        {rows.map((r) => (
+          <div
+            key={r.ordinal}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '32px 1fr 90px 100px',
+              gap: spacing.sm,
+              padding: '8px 12px',
+              fontSize: 13,
+              color: colors.textPrimary,
+              fontFamily: fonts.mono,
+              borderBottom: `1px solid ${colors.border}`,
+            }}
+            title={r.server?.error_detail ?? undefined}
+          >
+            <div style={{ color: colors.textMuted }}>{r.ordinal}</div>
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.filename}
             </div>
-          );
-        })}
+            <div style={{ color: colors.textMuted }}>{(r.size_bytes / 1024).toFixed(1)} KB</div>
+            <div>{stateChip(r.server?.state ?? 'pending')}</div>
+          </div>
+        ))}
       </div>
     </div>
   );

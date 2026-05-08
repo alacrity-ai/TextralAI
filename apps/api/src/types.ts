@@ -107,6 +107,28 @@ export interface Env extends Bindings {
   QDRANT_API_KEY?: string;
   /** PHASE_2_CLEANUP_TODO: read by `retrieval/vector-store.ts`. */
   PINECONE_API_KEY?: string;
+
+  // ── Self-service tenant registration (Phase A) ────────────────────────
+  /** Mailgun sending API key. Set via `wrangler secret put MAILGUN_API_KEY`.
+   *  Absence makes `sendMail` short-circuit to a console.log; useful for
+   *  local dev (no creds needed) but also means /v1/auth/register will not
+   *  actually deliver email. The route layer translates this in prod
+   *  (`ENV='prod'`) into `TENANT_REGISTRATION_DISABLED`. */
+  MAILGUN_API_KEY?: string;
+  /** Mailgun sending domain (e.g. `mg.alacrity.ai`). Plain `[vars]` entry. */
+  MAILGUN_DOMAIN?: string;
+  /** Optional `From:` header override; default `Textral <noreply@{MAILGUN_DOMAIN}>`. */
+  MAILGUN_FROM?: string;
+  /** Optional Mailgun base URL override; default `https://api.mailgun.net`. */
+  MAILGUN_BASE_URL?: string;
+  /** Public-facing base URL of the sandbox the email link should point at
+   *  (e.g. `https://textral.alacrity.ai`). Required in prod; falls back to
+   *  `http://localhost:5173` in dev. Read by `auth/email-tokens.ts`. */
+  TEXTRAL_PUBLIC_BASE?: string;
+  /** Salt for anonymizing remote IPs in `email_verifications.ip_hash`.
+   *  Worker secret. Rotation strategy: rotate the salt; existing hashes
+   *  become permanently anonymous. Self-host: optional. */
+  RATE_LIMIT_IP_SALT?: string;
 }
 
 export type Variables = {

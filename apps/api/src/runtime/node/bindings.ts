@@ -164,6 +164,17 @@ export function buildNodeBindings(env: NodeJS.ProcessEnv): NodeRuntimeContext {
     ...(env.QDRANT_URL ? { QDRANT_URL: env.QDRANT_URL } : {}),
     ...(env.QDRANT_API_KEY ? { QDRANT_API_KEY: env.QDRANT_API_KEY } : {}),
     ...(env.PINECONE_API_KEY ? { PINECONE_API_KEY: env.PINECONE_API_KEY } : {}),
+    // Phase A — self-service tenant registration. `services/mailgun.ts`
+    // short-circuits when MAILGUN_API_KEY/DOMAIN are missing, so
+    // self-host operators who don't want this flow leave them unset
+    // and `/v1/auth/register` becomes a no-op (the route layer further
+    // gates on prod env).
+    ...(env.MAILGUN_API_KEY ? { MAILGUN_API_KEY: env.MAILGUN_API_KEY } : {}),
+    ...(env.MAILGUN_DOMAIN ? { MAILGUN_DOMAIN: env.MAILGUN_DOMAIN } : {}),
+    ...(env.MAILGUN_FROM ? { MAILGUN_FROM: env.MAILGUN_FROM } : {}),
+    ...(env.MAILGUN_BASE_URL ? { MAILGUN_BASE_URL: env.MAILGUN_BASE_URL } : {}),
+    ...(env.TEXTRAL_PUBLIC_BASE ? { TEXTRAL_PUBLIC_BASE: env.TEXTRAL_PUBLIC_BASE } : {}),
+    ...(env.RATE_LIMIT_IP_SALT ? { RATE_LIMIT_IP_SALT: env.RATE_LIMIT_IP_SALT } : {}),
   } as unknown as Env;
 
   return { bindings: envShaped, bg, pgPool, redis, s3 };

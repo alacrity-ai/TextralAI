@@ -46,6 +46,13 @@ AUDIT_HASH_SALT = "test-audit-salt"
 # vars before constructing an adapter; tests for those code paths inject
 # values per-case via `(env as ...).QDRANT_URL = ...`.
 QDRANT_URL = ""
+# Phase A — self-service registration. MAILGUN_API_KEY intentionally
+# absent: `sendMail` short-circuits to a console.log in tests so we
+# don't accidentally hit the wire. TEXTRAL_PUBLIC_BASE is set so
+# `buildRedeemUrl` produces deterministic URLs in test snapshots.
+MAILGUN_DOMAIN = "mg.test.invalid"
+TEXTRAL_PUBLIC_BASE = "http://localhost:5173"
+RATE_LIMIT_IP_SALT = "test-rate-limit-salt"
 
 [[env.test.d1_databases]]
 binding = "DB"
@@ -81,6 +88,11 @@ AI_GATEWAY_BYPASS = "false"
 # V3 Phase 1 — Qdrant base URL. Self-host Qdrant Cloud URL goes here;
 # secrets (`QDRANT_API_KEY`, `PINECONE_API_KEY`) via `wrangler secret put`.
 QDRANT_URL = ""
+# Phase A — self-service registration. MAILGUN_API_KEY +
+# RATE_LIMIT_IP_SALT are Worker secrets (`wrangler secret put …`).
+# Update TEXTRAL_PUBLIC_BASE to the deployed sandbox URL.
+MAILGUN_DOMAIN = "mg.alacrity.ai"
+TEXTRAL_PUBLIC_BASE = "https://textral.alacrity.ai"
 
 [[env.prod.d1_databases]]
 binding = "DB"
@@ -154,6 +166,11 @@ WORKER_INTERNAL_URL = "https://textral-api-dev.leif-e24.workers.dev"
 # `make dev-stack`-running Qdrant. PINECONE_API_KEY + QDRANT_API_KEY
 # go through `wrangler secret put` (not vars).
 QDRANT_URL = ""
+# Phase A — self-service registration. MAILGUN_API_KEY +
+# RATE_LIMIT_IP_SALT are Worker secrets (`wrangler secret put …`).
+# TEXTRAL_PUBLIC_BASE points at the dev sandbox Pages URL.
+MAILGUN_DOMAIN = "mg.alacrity.ai"
+TEXTRAL_PUBLIC_BASE = "https://textral-sandbox-dev.pages.dev"
 
 [[env.dev.d1_databases]]
 binding = "DB"

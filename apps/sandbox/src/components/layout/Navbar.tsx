@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { colors, fonts } from '../../styles/tokens.js';
 import { useApiKey } from '../../auth/ApiKeyContext.js';
 import { useActiveJobs } from '../../context/ActiveJobsContext.js';
+import { useBulkJobsActive } from '../../context/BulkJobsActiveContext.js';
 import { NamespacePicker } from '../NamespacePicker.js';
 import { apiUrl } from '../../api/client.js';
 
@@ -21,12 +22,17 @@ export function Navbar() {
   const location = useLocation();
   const { setKey } = useApiKey();
   const activeJobs = useActiveJobs();
+  const bulkJobs = useBulkJobsActive();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Count only non-terminal jobs for the badge — once a job hits
   // completed/failed (incl. cancelled) it's no longer "active" even if
-  // it's still in the grace-window list.
-  const ingestBadgeCount = activeJobs.jobs.filter((j) => j.terminalAt === null).length;
+  // it's still in the grace-window list. Combines single-file ingests
+  // (ActiveJobsContext) with bulk jobs (BulkJobsActiveContext) so the
+  // tab signals "something is happening on Ingest" regardless of
+  // which path the user used.
+  const singleIngestCount = activeJobs.jobs.filter((j) => j.terminalAt === null).length;
+  const ingestBadgeCount = singleIngestCount + bulkJobs.inFlightCount;
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);

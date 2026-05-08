@@ -20,6 +20,7 @@ import { ModelSelectField } from '../components/ui/ModelSelectField.js';
 import { ProviderKeySelectField } from '../components/ui/ProviderKeySelectField.js';
 import { IngestStreamLog } from '../components/IngestStreamLog.js';
 import { BulkIngestPanel } from '../components/bulk/BulkIngestPanel.js';
+import { useBulkJobsActive } from '../context/BulkJobsActiveContext.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 import { useToast } from '../context/ToastContext.js';
 
@@ -68,6 +69,7 @@ export function Ingest() {
   const { showToast } = useToast();
   const registry = useModelRegistry();
   const activeJobs = useActiveJobs();
+  const bulkJobs = useBulkJobsActive();
   const [file, setFile] = useState<File | null>(null);
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [form, setForm] = useState<FormState>(DEFAULTS);
@@ -272,6 +274,7 @@ export function Ingest() {
           <Link
             to="/ingest/bulk"
             style={{
+              position: 'relative',
               fontSize: 11,
               color: colors.textMuted,
               textDecoration: 'none',
@@ -282,9 +285,34 @@ export function Ingest() {
               borderRadius: 4,
               padding: '8px 14px',
               whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
             Bulk jobs →
+            {bulkJobs.inFlightCount > 0 && (
+              <span
+                aria-label={`${bulkJobs.inFlightCount} bulk job${bulkJobs.inFlightCount === 1 ? '' : 's'} in progress`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 6px',
+                  borderRadius: 9,
+                  background: colors.primary,
+                  color: '#13110f',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0,
+                  fontFamily: fonts.sans,
+                }}
+              >
+                {bulkJobs.inFlightCount}
+              </span>
+            )}
           </Link>
           <Link
             to="/ingest/history"

@@ -6,6 +6,7 @@ import { ModelRegistryProvider } from './context/ModelRegistryContext.js';
 import { ProviderKeyRegistryProvider } from './context/ProviderKeyRegistryContext.js';
 import { InfraKeyRegistryProvider } from './context/InfraKeyRegistryContext.js';
 import { ActiveJobsProvider } from './context/ActiveJobsContext.js';
+import { BulkJobsActiveProvider } from './context/BulkJobsActiveContext.js';
 import { IngestHistory } from './pages/IngestHistory.js';
 import { BulkJobs } from './pages/BulkJobs.js';
 import { BulkJobDetail } from './pages/BulkJobDetail.js';
@@ -46,6 +47,7 @@ export function App() {
                         <ProviderKeyRegistryProvider>
                           <InfraKeyRegistryProvider>
                             <ActiveJobsProvider>
+                              <BulkJobsActiveProvider>
                               <AppShell>
                                 <Routes>
                                   <Route path="/" element={<QueryBench />} />
@@ -63,6 +65,7 @@ export function App() {
                                   <Route path="*" element={<Navigate to="/" replace />} />
                                 </Routes>
                               </AppShell>
+                              </BulkJobsActiveProvider>
                             </ActiveJobsProvider>
                           </InfraKeyRegistryProvider>
                         </ProviderKeyRegistryProvider>

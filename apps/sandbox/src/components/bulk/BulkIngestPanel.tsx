@@ -203,19 +203,30 @@ export function BulkIngestPanel({
   }, [isResumeMode, status]);
 
   // Poll the bulk job until terminal.
+  //
+  // Both fetches must complete BEFORE any setState — the previous
+  // sequential implementation triggered a re-render mid-tick after
+  // setStatus(s), which fired the status-driven effect, which set
+  // phase='done', which canceled this effect's polling loop and
+  // returned `cancelled = true` from the in-flight tick before
+  // setPerFile(f.data) could run. Result: terminal jobs in resume
+  // mode rendered with an empty file table. Promise.all + atomic
+  // setStates collapse the two updates into one render and dodge
+  // the race entirely.
   useEffect(() => {
     if (!bulkJobId || (phase !== 'polling' && phase !== 'finalizing')) return;
     let cancelled = false;
     const tick = async () => {
       try {
-        const s = await api<BulkJobStatus>('GET', `/v1/ingest/bulk/${bulkJobId}`);
+        const [s, f] = await Promise.all([
+          api<BulkJobStatus>('GET', `/v1/ingest/bulk/${bulkJobId}`),
+          api<{ data: BulkJobFile[] }>(
+            'GET',
+            `/v1/ingest/bulk/${bulkJobId}/files?page_size=1000`,
+          ),
+        ]);
         if (cancelled) return;
         setStatus(s);
-        const f = await api<{ data: BulkJobFile[] }>(
-          'GET',
-          `/v1/ingest/bulk/${bulkJobId}/files?page_size=1000`,
-        );
-        if (cancelled) return;
         setPerFile(f.data);
         if (TERMINAL_STATES.has(s.state)) {
           setPhase('done');

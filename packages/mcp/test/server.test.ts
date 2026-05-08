@@ -8,8 +8,8 @@ import { allPrompts } from '../src/prompts/index.js';
 import { allResources } from '../src/resources/index.js';
 
 describe('@textral/mcp registries', () => {
-  it('ships exactly 17 tools', () => {
-    expect(allTools).toHaveLength(17);
+  it('ships exactly 21 tools', () => {
+    expect(allTools).toHaveLength(21);
   });
 
   it('ships 3 workflow prompts', () => {
@@ -61,13 +61,17 @@ describe('@textral/mcp registries', () => {
         'list_chunks',
         'list_documents',
         'list_failing_jobs',
+        'list_infra_keys',
         'list_models',
         'list_namespaces',
         'list_provider_keys',
         'list_query_events',
         'query',
+        'register_infra_key',
         'register_provider_key',
         'retry_failing_job',
+        'revoke_infra_key',
+        'test_infra_key',
       ].sort(),
     );
   });

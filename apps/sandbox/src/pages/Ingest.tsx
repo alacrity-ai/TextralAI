@@ -8,6 +8,7 @@ import type {
   Document,
   FinalizeResponse,
   IngestionJobCreateResponse,
+  KnownModel,
   ProviderName,
   UploadResponse,
 } from '../api/types.js';
@@ -338,17 +339,15 @@ export function Ingest() {
               value={form.embedding_model}
               provider={form.embedding_provider}
               kind="embedding"
-              onChange={(id) => {
-                const known = registry.byId(id);
-                setForm((f) => ({
-                  ...f,
-                  embedding_model: id,
-                  ...(known?.dimensions ? { embedding_dimensions: known.dimensions } : {}),
-                }));
-              }}
+              onChange={(id) => patch('embedding_model', id)}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.md }}>
-              <LockedDimensionField value={form.embedding_dimensions} />
+              <LockedDimensionField
+                value={form.embedding_dimensions}
+                {...(registry.byId(form.embedding_model)
+                  ? { pickedModel: registry.byId(form.embedding_model)! }
+                  : {})}
+              />
               <ProviderKeySelectField
                 label="Provider key ref"
                 value={form.embedding_provider_key_ref}
@@ -483,8 +482,19 @@ export function Ingest() {
 /** Read-only display of the namespace's locked embedding dim. The
  *  underlying form field is still updated (via the useEffect) so the
  *  ingest payload sends the right value, but the UI doesn't let the
- *  user override it — would just trip NAMESPACE_DIMENSION_MISMATCH. */
-function LockedDimensionField({ value }: { value: number }) {
+ *  user override it — would just trip NAMESPACE_DIMENSION_MISMATCH.
+ *
+ *  When `pickedModel` is supplied (registry hit), we also surface a
+ *  one-line compatibility hint: incompatible picks are flagged
+ *  inline so the user fixes it before the API would reject. */
+function LockedDimensionField({
+  value,
+  pickedModel,
+}: {
+  value: number;
+  pickedModel?: KnownModel;
+}) {
+  const compat = compatibilityFor(value, pickedModel);
   return (
     <div>
       <label
@@ -504,7 +514,7 @@ function LockedDimensionField({ value }: { value: number }) {
         style={{
           padding: '11px 14px',
           background: colors.bgInput,
-          border: `1px solid ${colors.border}`,
+          border: `1px solid ${compat.kind === 'incompatible' ? colors.danger : colors.border}`,
           borderRadius: radii.md,
           fontSize: 14,
           fontFamily: fonts.mono,
@@ -530,15 +540,42 @@ function LockedDimensionField({ value }: { value: number }) {
         style={{
           marginTop: 6,
           fontSize: 11,
-          color: colors.textMuted,
+          color: compat.kind === 'incompatible' ? colors.danger : colors.textMuted,
           fontStyle: 'italic',
           lineHeight: 1.4,
         }}
       >
-        Set at namespace-create time; every ingest into this namespace must use this dim.
+        {compat.message ??
+          'Set at namespace-create time; every ingest into this namespace must use this dim.'}
       </div>
     </div>
   );
+}
+
+interface CompatResult {
+  kind: 'native' | 'matryoshka' | 'incompatible' | 'unknown';
+  message: string | null;
+}
+
+/** Decide whether `pickedModel` can produce vectors at `lockedDim`.
+ *  Returns a structured kind + a one-line message for the dim badge.
+ *  Unknown models (free-text / not in the registry) get null — the
+ *  user took the escape hatch and we trust them. */
+function compatibilityFor(lockedDim: number, model: KnownModel | undefined): CompatResult {
+  if (!model) return { kind: 'unknown', message: null };
+  if (model.dimensions === lockedDim) {
+    return { kind: 'native', message: null };
+  }
+  if (model.supported_dimensions?.includes(lockedDim)) {
+    return {
+      kind: 'matryoshka',
+      message: `${model.id} natively returns ${model.dimensions}-dim; Matryoshka-truncated to ${lockedDim} for this namespace.`,
+    };
+  }
+  return {
+    kind: 'incompatible',
+    message: `⚠ ${model.id} produces ${model.dimensions}-dim vectors and cannot match the namespace's locked ${lockedDim}. Pick a compatible model or a different namespace.`,
+  };
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {

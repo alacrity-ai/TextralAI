@@ -18,40 +18,56 @@ import { ProviderKeys } from './pages/ProviderKeys.js';
 import { NamespaceList } from './pages/NamespaceList.js';
 import { DocumentInspector } from './pages/DocumentInspector.js';
 import { Admin } from './pages/Admin.js';
+import { Landing } from './pages/Landing.js';
+import { Redeem } from './pages/Redeem.js';
+import { Recover } from './pages/Recover.js';
 
+// /redeem/:token and /recover live OUTSIDE the auth gate so users
+// can land on them with no key. Everything else routes through the
+// gate; when a key is in localStorage the gate renders the AppShell
+// subtree, otherwise it renders the public Landing page.
 export function App() {
   return (
     <BrowserRouter>
       <ApiKeyProvider>
         <ToastProvider>
           <ConfirmProvider>
-            <ApiKeyGate>
-              <NamespaceProvider>
-                <ModelRegistryProvider>
-                <ProviderKeyRegistryProvider>
-                <InfraKeyRegistryProvider>
-                <ActiveJobsProvider>
-                <AppShell>
-                  <Routes>
-                    <Route path="/" element={<QueryBench />} />
-                    <Route path="/history" element={<QueryHistory />} />
-                    <Route path="/ingest" element={<Ingest />} />
-                    <Route path="/ingest/history" element={<IngestHistory />} />
-                    <Route path="/compare" element={<Compare />} />
-                    <Route path="/namespaces" element={<NamespaceList />} />
-                    <Route path="/documents" element={<DocumentInspector />} />
-                    <Route path="/documents/:id" element={<DocumentInspector />} />
-                    <Route path="/provider-keys" element={<ProviderKeys />} />
-                    <Route path="/admin" element={<Admin />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </AppShell>
-                </ActiveJobsProvider>
-                </InfraKeyRegistryProvider>
-                </ProviderKeyRegistryProvider>
-                </ModelRegistryProvider>
-              </NamespaceProvider>
-            </ApiKeyGate>
+            <Routes>
+              <Route path="/redeem/:token" element={<Redeem />} />
+              <Route path="/recover" element={<Recover />} />
+              <Route
+                path="/*"
+                element={
+                  <ApiKeyGate publicLanding={<Landing />}>
+                    <NamespaceProvider>
+                      <ModelRegistryProvider>
+                        <ProviderKeyRegistryProvider>
+                          <InfraKeyRegistryProvider>
+                            <ActiveJobsProvider>
+                              <AppShell>
+                                <Routes>
+                                  <Route path="/" element={<QueryBench />} />
+                                  <Route path="/history" element={<QueryHistory />} />
+                                  <Route path="/ingest" element={<Ingest />} />
+                                  <Route path="/ingest/history" element={<IngestHistory />} />
+                                  <Route path="/compare" element={<Compare />} />
+                                  <Route path="/namespaces" element={<NamespaceList />} />
+                                  <Route path="/documents" element={<DocumentInspector />} />
+                                  <Route path="/documents/:id" element={<DocumentInspector />} />
+                                  <Route path="/provider-keys" element={<ProviderKeys />} />
+                                  <Route path="/admin" element={<Admin />} />
+                                  <Route path="*" element={<Navigate to="/" replace />} />
+                                </Routes>
+                              </AppShell>
+                            </ActiveJobsProvider>
+                          </InfraKeyRegistryProvider>
+                        </ProviderKeyRegistryProvider>
+                      </ModelRegistryProvider>
+                    </NamespaceProvider>
+                  </ApiKeyGate>
+                }
+              />
+            </Routes>
           </ConfirmProvider>
         </ToastProvider>
       </ApiKeyProvider>

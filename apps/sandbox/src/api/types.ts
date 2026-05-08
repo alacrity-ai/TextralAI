@@ -132,6 +132,47 @@ export interface InfraKeyTestResponse {
   error_message?: string;
 }
 
+// ── Self-service tenant registration (Phase B/C) ───────────────────────
+
+export interface RegisterRequest {
+  email: string;
+  display_name: string;
+}
+
+export interface RecoverRequest {
+  email: string;
+}
+
+export interface RedeemRequest {
+  token: string;
+}
+
+export interface AuthOkResponse {
+  ok: true;
+}
+
+/** Response shape for `POST /v1/auth/redeem`. The `raw` API key is
+ *  shown exactly once — the sandbox stuffs it into localStorage and
+ *  navigates to the gate-passed UI. `namespace` is present only for
+ *  the register flow; recover returns just tenant + api_key. */
+export interface RedeemResponse {
+  tenant: {
+    id: string;
+    display_name: string;
+    owner_email: string;
+  };
+  namespace?: {
+    id: string;
+    slug: string;
+  };
+  api_key: {
+    id: string;
+    raw: string;
+    prefix: string;
+    scopes: string[];
+  };
+}
+
 export interface Document {
   id: string;
   tenant_id: string;

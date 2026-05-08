@@ -84,7 +84,8 @@ preview_urls = false
 # pattern here → document in docs/development/cron/CRON_SCAFFOLD.md.
 [env.prod.triggers]
 crons = [
-  "0 3 * * *",   # 03:00 UTC daily — bulk-job-expire
+  "0 3 * * *",     # 03:00 UTC daily — bulk-job-expire
+  "*/5 * * * *",   # every 5 minutes — ingestion-job-lease-recovery
 ]
 
 [env.prod.vars]
@@ -168,7 +169,8 @@ preview_urls = false
 # before they hit prod. See `docs/development/cron/CRON_SCAFFOLD.md`.
 [env.dev.triggers]
 crons = [
-  "0 3 * * *",   # 03:00 UTC daily — bulk-job-expire (dev mirror)
+  "0 3 * * *",     # 03:00 UTC daily — bulk-job-expire (dev mirror)
+  "*/5 * * * *",   # every 5 minutes — ingestion-job-lease-recovery (dev mirror)
 ]
 
 [env.dev.vars]

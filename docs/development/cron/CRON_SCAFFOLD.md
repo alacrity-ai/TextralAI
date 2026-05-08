@@ -166,9 +166,12 @@ registered schedule(s). CF runs them on UTC. Test locally with
 | name | schedule | scope | runner | description |
 |---|---|---|---|---|
 | `bulk-job-expire` | `0 3 * * *` | D1 + R2 | `scheduled/bulk-job-expire.ts` | Sweep un-finalized `bulk_jobs` past their 7-day TTL; delete each job's tmp R2 keys; mark the row `expired`. |
+| `ingestion-job-lease-recovery` | `*/5 * * * *` | D1 + Queue | `scheduled/ingestion-job-lease-recovery.ts` | Find `ingestion_jobs` with `status='running' AND lease_expires_at < now() - 5min`. Increment `attempt_count`; below 3 retries, reset and re-publish to the queue; at 3, dead-letter with `INGEST_LEASE_RECOVERY_EXHAUSTED`. |
 
-That's the entire registry today. The next column ("Future") covers
-identified-but-not-yet-implemented candidates.
+For the running-checklist version (priority, ownership, planned
+sequencing) see [`CRON_CHECKLIST.md`](./CRON_CHECKLIST.md). The
+"Future" column below covers identified-but-not-yet-implemented
+candidates with implementation notes.
 
 ---
 
@@ -182,7 +185,6 @@ risk/value if we don't ship it.
 
 | name | schedule | tables / R2 | trigger | risk if absent |
 |---|---|---|---|---|
-| `ingestion-job-lease-recovery` | `*/5 * * * *` | `ingestion_jobs` | `status='running' AND lease_expires_at < now()` | A Container death mid-job leaves the row locked forever. New attempts can't claim the version_index. **Production reliability hit.** |
 | `upload-intent-cleanup` | `0 3 * * *` | `upload_intents` + R2 `tmp/.../{upload_id}/source.*` | `expires_at < now() - 24h AND consumed_at IS NULL` | Single-file upload abandons leak D1 rows + R2 bytes. Same shape as bulk-job-expire; mirrors that runner. **Slow cost leak.** |
 
 ### Medium priority — retention / hygiene

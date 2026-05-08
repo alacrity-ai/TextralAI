@@ -26,6 +26,7 @@
 
 import type { Bindings } from '../runtime/shared/interfaces.js';
 import { expireUnfinalizedBulkJobs } from './bulk-job-expire.js';
+import { recoverStuckIngestionJobs } from './ingestion-job-lease-recovery.js';
 
 export interface CronJob {
   /** The cron pattern as it appears in `wrangler.toml`. Must be
@@ -53,9 +54,17 @@ export const SCHEDULES: CronJob[] = [
       'Sweep un-finalized bulk_jobs past their 7-day TTL; delete each job\'s tmp R2 keys; mark the row expired.',
     run: (bindings) => expireUnfinalizedBulkJobs(bindings),
   },
+  {
+    cron: '*/5 * * * *',
+    name: 'ingestion-job-lease-recovery',
+    description:
+      'Recover ingestion_jobs whose lease expired without terminal state (Container death mid-job). Increment attempt_count + requeue; DLQ after 3 auto-retries.',
+    run: (bindings) => recoverStuckIngestionJobs(bindings),
+  },
   // ── Future crons ────────────────────────────────────────────────
   //
-  // See docs/development/cron/CRON_SCAFFOLD.md §Future for the
+  // See docs/development/cron/CRON_SCAFFOLD.md §Future and the
+  // checklist at docs/development/cron/CRON_CHECKLIST.md for the
   // complete inventory of identified stale-data scenarios. Each
   // gets its own row here when implemented.
 ];

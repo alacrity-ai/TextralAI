@@ -408,6 +408,13 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: 'Per-file ingestion job terminated `failed`; surfaces the underlying ingestion `error_code`.',
     recovery: 'Check `error_detail`. Retry via `POST /v1/ingest/bulk/{id}/retry` once the underlying issue is resolved.',
   },
+
+  // ── Ingestion job auto-recovery ────────────────────────────────────
+  INGEST_LEASE_RECOVERY_EXHAUSTED: {
+    http: 500,
+    when: 'The lease-recovery cron auto-requeued a stuck ingestion job 3 times in a row without it completing — likely a poison message or persistent Container failure. Job has been dead-lettered.',
+    recovery: 'Operator: inspect `ingest_stage_attempts` for the last completed stage to localize the failure. Once root-caused, requeue via `POST /v1/admin/ingestion-jobs/{id}/clear-dlq` (resets attempt_count to 0).',
+  },
 };
 
 /** Render the catalog as an HTML table for embedding in

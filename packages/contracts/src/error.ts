@@ -103,6 +103,8 @@ export const ErrorCode = z.enum([
   'BULK_FILE_PROVIDER_THROTTLED',
   'BULK_FILE_FINALIZE_FAILED',
   'BULK_FILE_INGEST_FAILED',
+  // ingestion job lease recovery — auto-cron failure mode
+  'INGEST_LEASE_RECOVERY_EXHAUSTED',
   // not implemented (used by Phase 1.5 stubs that light up in Phase 2)
   'NOT_IMPLEMENTED',
 ]);

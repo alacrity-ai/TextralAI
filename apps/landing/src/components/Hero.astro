@@ -1,0 +1,72 @@
+---
+const sandboxUrl = 'https://sandbox.textral.alacrity.ai';
+const repoUrl = 'https://github.com/alacrity-ai/TextralAI';
+---
+
+<section class="relative overflow-hidden bg-hero-glow">
+  <div class="container-wide relative py-24 md:py-32 lg:py-40">
+    <div class="grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
+      <div class="lg:col-span-6 xl:col-span-7">
+        <span class="eyebrow mb-6">
+          <span class="text-accent-teal">RAG-as-a-Service</span>
+          <span class="text-text-tertiary">·</span>
+          <span class="text-accent-teal">MCP-native</span>
+          <span class="text-text-tertiary">·</span>
+          <span class="text-accent-teal">Open source</span>
+        </span>
+
+        <h1
+          class="font-display text-5xl font-extrabold leading-[1.05] tracking-tight text-text-primary md:text-6xl lg:text-6xl xl:text-7xl"
+        >
+          Hosted RAG your AI agent can{' '}
+          <span class="gradient-text">actually use</span>.
+        </h1>
+
+        <p
+          class="mt-6 max-w-prose text-lg text-text-secondary md:text-xl"
+        >
+          Hybrid retrieval, audit-first, MCP-native. Run it on Cloudflare
+          or self-host on your own infra — same packages, same contracts.
+        </p>
+
+        <div class="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <a href={sandboxUrl} class="btn-primary">
+            Try the sandbox
+            <span aria-hidden="true">→</span>
+          </a>
+          <a href={repoUrl} class="btn-secondary" rel="noopener">
+            View on GitHub
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <p class="mt-6 text-sm text-text-tertiary">
+          No credit card. Free during beta.
+        </p>
+      </div>
+
+      <div class="lg:col-span-6 xl:col-span-5">
+        <div
+          class="relative overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+        >
+          <img
+            src="/brand/mcp.png"
+            alt="A Claude Code terminal showing an MCP install for Textral, a query about the Library of Alexandria, hybrid retrieval results, and cited source documents."
+            width="1536"
+            height="1024"
+            class="h-auto w-full"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
+          <div
+            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg-base/40 to-transparent"
+            aria-hidden="true"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gradient-divider"></div>
+</section>

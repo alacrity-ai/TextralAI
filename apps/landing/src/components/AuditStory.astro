@@ -1,0 +1,104 @@
+---
+const auditJson = `{
+  "query_event_id": "qev_01KR39M0YHK6KJ14S7QXKVWWQW",
+  "answer": "The library's legacy endures through the texts that were copied and disseminated…",
+  "citations": [
+    { "n": 1, "chunk_id": "chk_…", "section_path": "/chapter-six-what-survived" },
+    { "n": 2, "chunk_id": "chk_…", "section_path": "/chapter-three-the-founding" },
+    { "n": 3, "chunk_id": "chk_…", "section_path": "/chapter-four-the-scholars" },
+    { "n": 4, "chunk_id": "chk_…", "section_path": "/chapter-five-the-decline" }
+  ],
+  "audit": {
+    "retrieval_status": "full",
+    "dense_candidates_returned": 4,
+    "sparse_candidates_returned": 8,
+    "candidates_returned": 8,
+    "reranker": { "provider": "voyage", "model": "rerank-2", "executed": true },
+    "citation_integrity": "valid",
+    "dropped_citations": []
+  }
+}`;
+---
+
+<section class="relative py-20 md:py-28">
+  <div class="container-default">
+    <div class="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
+      <div class="lg:col-span-6">
+        <p
+          class="text-xs font-medium uppercase tracking-[0.04em] text-accent-magenta"
+        >
+          The audit story
+        </p>
+        <h2
+          class="mt-4 font-display text-4xl font-bold tracking-tight text-text-primary md:text-5xl"
+        >
+          Receipts. <span class="gradient-text">For every query.</span>
+        </h2>
+
+        <div class="mt-8 space-y-6 text-lg text-text-secondary">
+          <p>
+            When retrieval quality silently degrades, most teams find out
+            from a user complaint. Textral surfaces it the second it happens.
+          </p>
+          <p>
+            Every query returns a{' '}
+            <code
+              class="rounded-sm bg-bg-elevated px-1.5 py-0.5 font-mono text-base text-text-primary"
+              >query_event_id</code
+            >{' '}
+            you can replay weeks later. Full retrieval lineage: which arm
+            fired, what scored, what was reranked, what got cited, what got
+            dropped. Per-arm error messages when an arm degrades. Citation
+            integrity validated against the chunks you actually retrieved.
+          </p>
+          <p>
+            We shipped a real production fix on day two of building Textral
+            because the audit caught a silent dimension-mismatch bug nothing
+            else would have. The kind of bug that turns into "our retrieval
+            just got worse, no one knows why" three months later.
+          </p>
+        </div>
+      </div>
+
+      <div class="lg:col-span-6">
+        <div
+          class="overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+        >
+          <div
+            class="flex items-center justify-between border-b border-border-subtle bg-bg-overlay px-4 py-2.5"
+          >
+            <span class="font-mono text-xs text-text-tertiary"
+              >response.json</span
+            >
+            <span class="inline-flex items-center gap-1.5 text-xs text-accent-success">
+              <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent-success"></span>
+              audit.retrieval_status: full
+            </span>
+          </div>
+          <pre
+            class="overflow-x-auto bg-code-bg px-5 py-5 text-xs leading-relaxed md:text-sm"
+          ><code class="font-mono text-text-primary">{auditJson}</code></pre>
+        </div>
+
+        <figure
+          class="mt-6 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+        >
+          <img
+            src="/brand/retrieval_lineage_flow.png"
+            alt="Diagram showing a query flowing through parallel dense and sparse retrieval, joining at RRF fusion, then reranker, then synthesis, with an audit trail recording every step."
+            width="1536"
+            height="1024"
+            class="h-auto w-full"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption
+            class="border-t border-border-subtle bg-bg-overlay px-4 py-2.5 font-mono text-xs text-text-tertiary"
+          >
+            retrieval_lineage / fully replayable
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,41 @@
+---
+const sandboxUrl = 'https://sandbox.textral.alacrity.ai';
+---
+
+<section class="py-20 md:py-24">
+  <div class="container-default">
+    <div
+      class="mx-auto max-w-3xl rounded-xl border border-border-subtle bg-bg-elevated p-10 text-center md:p-14"
+    >
+      <p
+        class="text-xs font-medium uppercase tracking-[0.04em] text-accent-amber"
+      >
+        Beta · No credit card
+      </p>
+      <h2
+        class="mt-4 font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+      >
+        Free during beta.
+      </h2>
+      <p
+        class="mx-auto mt-6 max-w-prose text-base text-text-secondary md:text-lg"
+      >
+        We're in private beta. Sandbox tenants are free; bring-your-own
+        provider keys (OpenAI, Anthropic, Voyage, Cohere) cover inference
+        and reranking costs.
+      </p>
+      <p
+        class="mx-auto mt-3 max-w-prose text-sm text-text-tertiary"
+      >
+        When pricing lands, you'll see it here first — and beta tenants
+        get advance notice and a grandfathered tier.
+      </p>
+      <div class="mt-8 flex justify-center">
+        <a href={sandboxUrl} class="btn-primary">
+          Start in the sandbox
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,102 @@
+---
+const sandboxUrl = 'https://sandbox.textral.alacrity.ai';
+const repoUrl = 'https://github.com/alacrity-ai/TextralAI';
+---
+
+<section class="py-20 md:py-28">
+  <div class="container-default">
+    <p
+      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+    >
+      Deploy anywhere
+    </p>
+    <h2
+      class="mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+    >
+      Hosted, self-hosted, or both at once.
+    </h2>
+    <p
+      class="mx-auto mt-6 max-w-prose text-center text-lg text-text-secondary"
+    >
+      The MCP profile model lets one Claude Code session talk to a hosted
+      dev instance and a self-hosted prod instance in the same
+      conversation. We did not bolt this on as a v2 — it's how the product
+      was built.
+    </p>
+
+    <figure class="mx-auto mt-12 max-w-3xl">
+      <div
+        class="overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+      >
+        <img
+          src="/brand/hosted-self-hosted-symmetry.png"
+          alt="A mirrored architecture diagram with hosted Cloudflare deployment on the left and self-hosted infrastructure on the right, both connected through a shared @textral/contracts and @textral/sdk and @textral/mcp layer that produces identical outcomes."
+          width="1254"
+          height="1254"
+          class="h-auto w-full"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    </figure>
+
+    <div class="mt-12 grid gap-6 md:grid-cols-2">
+      <article
+        class="rounded-xl border border-border-subtle bg-bg-elevated p-8"
+      >
+        <p
+          class="text-xs font-medium uppercase tracking-[0.04em] text-accent-teal"
+        >
+          Hosted
+        </p>
+        <h3 class="mt-3 text-2xl font-semibold text-text-primary">
+          Hosted on Cloudflare
+        </h3>
+        <p class="mt-4 text-base text-text-secondary">
+          Spin up a tenant in the sandbox, get an API key, ingest your
+          first document. We run the workers, the database, the vector
+          store. You bring your provider keys (OpenAI, Anthropic, Voyage,
+          Cohere) — or use ours.
+        </p>
+        <a
+          href={sandboxUrl}
+          class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-accent-teal hover:brightness-110"
+        >
+          Start in the sandbox
+          <span aria-hidden="true">→</span>
+        </a>
+      </article>
+
+      <article
+        class="rounded-xl border border-border-subtle bg-bg-elevated p-8"
+      >
+        <p
+          class="text-xs font-medium uppercase tracking-[0.04em] text-accent-coral"
+        >
+          Self-hosted
+        </p>
+        <h3 class="mt-3 text-2xl font-semibold text-text-primary">
+          Self-hosted on your infra
+        </h3>
+        <p class="mt-4 text-base text-text-secondary">
+          Same packages. Same contracts. Deploy{' '}
+          <code
+            class="rounded-sm bg-bg-overlay px-1.5 py-0.5 font-mono text-sm text-text-primary"
+            >@textral/api</code
+          >{' '}
+          to your own Cloudflare account or your own runtime. The MCP
+          server, SDKs, and audit trail work identically. No fork, no
+          separate codebase to maintain.
+        </p>
+        <a
+          href={`${repoUrl}#self-hosting`}
+          rel="noopener"
+          class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-accent-coral hover:brightness-110"
+        >
+          Self-hosting guide
+          <span aria-hidden="true">↗</span>
+        </a>
+      </article>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,95 @@
+---
+const repoUrl = 'https://github.com/alacrity-ai/TextralAI';
+
+const cards = [
+  {
+    headline: 'Eval as a Service',
+    body:
+      'Public benchmark + per-namespace drift detection. nDCG@k, Recall@k, MRR — alerted when retrieval quality degrades on your corpus.',
+    href: `${repoUrl}/blob/main/docs/roadmap/EVAL_AS_A_SERVICE.md`,
+    accent: 'text-accent-teal',
+    border: 'hover:border-accent-teal/50',
+  },
+  {
+    headline: 'Agentic Retrieval',
+    body:
+      'Multi-hop, decompose-then-synthesize. The audit captures the full hop trace, so complex questions stay debuggable.',
+    href: `${repoUrl}/blob/main/docs/roadmap/AGENTIC_RETRIEVAL.md`,
+    accent: 'text-accent-amber',
+    border: 'hover:border-accent-amber/50',
+  },
+  {
+    headline: 'Connector Marketplace',
+    body:
+      'Notion, GitHub, Slack, Drive, Confluence. Auto-ingest, delta-sync, source metadata for filtered queries.',
+    href: `${repoUrl}/blob/main/docs/roadmap/CONNECTOR_MARKETPLACE.md`,
+    accent: 'text-accent-magenta',
+    border: 'hover:border-accent-magenta/50',
+  },
+  {
+    headline: 'Domain Tuning',
+    body:
+      'Hosted fine-tuned rerankers on your corpus. +5–12pt nDCG over generic baselines for specialized domains.',
+    href: `${repoUrl}/blob/main/docs/roadmap/DOMAIN_TUNING.md`,
+    accent: 'text-accent-coral',
+    border: 'hover:border-accent-coral/50',
+  },
+];
+---
+
+<section id="roadmap" class="py-20 md:py-24">
+  <div class="container-default">
+    <p
+      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+    >
+      What's next
+    </p>
+    <h2
+      class="mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+    >
+      What we're building next
+    </h2>
+    <p class="mt-4 text-center text-base text-text-secondary">
+      Public roadmap. Pull-requests welcome.
+    </p>
+
+    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        cards.map((card) => (
+          <a
+            href={card.href}
+            rel="noopener"
+            class={`group block rounded-lg border border-border-subtle bg-bg-elevated p-6 transition-colors duration-150 ${card.border}`}
+          >
+            <p
+              class={`text-xs font-medium uppercase tracking-[0.04em] ${card.accent}`}
+            >
+              Roadmap
+            </p>
+            <h3 class="mt-3 text-xl font-semibold text-text-primary">
+              {card.headline}
+            </h3>
+            <p class="mt-3 text-sm text-text-secondary">{card.body}</p>
+            <span
+              class={`mt-4 inline-flex items-center gap-1.5 text-sm font-medium ${card.accent}`}
+            >
+              Read the spec
+              <span aria-hidden="true">↗</span>
+            </span>
+          </a>
+        ))
+      }
+    </div>
+
+    <div class="mt-10 text-center">
+      <a
+        href={`${repoUrl}/tree/main/docs/roadmap`}
+        rel="noopener"
+        class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+      >
+        Full roadmap (13 docs)
+        <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,158 @@
+---
+const apiBase = 'https://api.textral.alacrity.ai';
+const docsUrl = 'https://github.com/alacrity-ai/TextralAI';
+
+const tabs = [
+  {
+    id: 'mcp',
+    label: 'MCP',
+    sublabel: 'Claude Code, Cursor, etc.',
+    intro: 'One command. Your agent gets retrieval as a tool.',
+    lang: 'bash',
+    code: `claude mcp add textral --scope user -- npx -y @textral/mcp`,
+    caption:
+      'Then ask: "What survived the Library of Alexandria?" — your agent calls query, gets cited chunks, and answers.',
+  },
+  {
+    id: 'typescript',
+    label: 'TypeScript',
+    sublabel: '@textral/sdk',
+    intro: 'Type-safe client paired with @textral/contracts.',
+    lang: 'typescript',
+    code: `import { Client } from "@textral/sdk";
+
+const client = new Client({ profile: "hosted-prod" });
+
+// Ingest
+await client.documents.ingest({
+  namespace: "narrative",
+  filename: "alexandria.md",
+  content: alexandriaText,
+});
+
+// Query with citations
+const { answer, citations, audit } = await client.query({
+  namespace: "narrative",
+  query: "What survived the Library of Alexandria?",
+});`,
+    caption: 'audit.query_event_id is your replay handle. Save it next to your logs.',
+  },
+  {
+    id: 'rest',
+    label: 'REST',
+    sublabel: 'curl-friendly',
+    intro: 'No SDK required. Plain HTTP, OpenAPI-spec’d.',
+    lang: 'bash',
+    code: `curl -X POST ${apiBase}/query \\
+  -H "Authorization: Bearer $TEXTRAL_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "namespace": "narrative",
+    "query": "What survived the Library of Alexandria?",
+    "embedding": { "provider": "openai", "model": "text-embedding-3-large" },
+    "inference":  { "provider": "openai", "model": "gpt-4o-mini" }
+  }'`,
+    caption: `Full OpenAPI surface at ${docsUrl}.`,
+  },
+];
+---
+
+<section id="proof" class="py-20 md:py-24">
+  <div class="container-default">
+    <p
+      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+    >
+      Code-first proof
+    </p>
+    <h2
+      class="mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+    >
+      Three lines from "I just heard about you" to "my agent is
+      querying my docs."
+    </h2>
+
+    <div class="mt-12">
+      <div
+        class="overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+        data-code-tabs
+      >
+        <div
+          role="tablist"
+          class="flex items-stretch gap-0 border-b border-border-subtle bg-bg-overlay"
+        >
+          {
+            tabs.map((tab, i) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={i === 0 ? 'true' : 'false'}
+                aria-controls={`panel-${tab.id}`}
+                id={`tab-${tab.id}`}
+                data-tab={tab.id}
+                class="relative -mb-px flex items-center gap-2 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-text-tertiary transition-colors hover:text-text-primary aria-selected:border-accent-teal aria-selected:text-text-primary"
+              >
+                <span>{tab.label}</span>
+                <span class="hidden text-xs font-normal text-text-tertiary md:inline">
+                  {tab.sublabel}
+                </span>
+              </button>
+            ))
+          }
+        </div>
+
+        {
+          tabs.map((tab, i) => (
+            <div
+              role="tabpanel"
+              id={`panel-${tab.id}`}
+              aria-labelledby={`tab-${tab.id}`}
+              data-panel={tab.id}
+              hidden={i !== 0}
+            >
+              <div class="border-b border-border-subtle px-5 py-3 text-sm text-text-secondary">
+                {tab.intro}
+              </div>
+              <pre class="overflow-x-auto bg-code-bg px-5 py-5 text-sm leading-relaxed"><code class="font-mono text-text-primary">{tab.code}</code></pre>
+              <div class="border-t border-border-subtle px-5 py-3 text-sm text-text-tertiary">
+                {tab.caption}
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Vanilla tab switching, no framework
+  const containers = document.querySelectorAll('[data-code-tabs]');
+  containers.forEach((container) => {
+    const tabs = container.querySelectorAll<HTMLButtonElement>('[data-tab]');
+    const panels = container.querySelectorAll<HTMLElement>('[data-panel]');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const id = tab.dataset.tab;
+        tabs.forEach((t) =>
+          t.setAttribute('aria-selected', t === tab ? 'true' : 'false'),
+        );
+        panels.forEach((panel) => {
+          panel.hidden = panel.dataset.panel !== id;
+        });
+      });
+      tab.addEventListener('keydown', (e: KeyboardEvent) => {
+        const tabsArr = Array.from(tabs);
+        const idx = tabsArr.indexOf(tab);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const next =
+            e.key === 'ArrowRight'
+              ? tabsArr[(idx + 1) % tabsArr.length]
+              : tabsArr[(idx - 1 + tabsArr.length) % tabsArr.length];
+          next?.focus();
+          next?.click();
+        }
+      });
+    });
+  });
+</script>

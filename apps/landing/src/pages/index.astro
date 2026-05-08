@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import Pillars from '../components/Pillars.astro';
+import AuditStory from '../components/AuditStory.astro';
+import CodeFirstProof from '../components/CodeFirstProof.astro';
+import HowItWorks from '../components/HowItWorks.astro';
+import HostedOrSelfHosted from '../components/HostedOrSelfHosted.astro';
+import ComparedTo from '../components/ComparedTo.astro';
+import Roadmap from '../components/Roadmap.astro';
+import Pricing from '../components/Pricing.astro';
+import FinalCTA from '../components/FinalCTA.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<BaseLayout>
+  <Nav />
+  <main id="main">
+    <Hero />
+    <Pillars />
+    <AuditStory />
+    <CodeFirstProof />
+    <HowItWorks />
+    <HostedOrSelfHosted />
+    <ComparedTo />
+    <Roadmap />
+    <Pricing />
+    <FinalCTA />
+  </main>
+  <Footer />
+</BaseLayout>

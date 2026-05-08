@@ -1,0 +1,41 @@
+---
+const sandboxUrl = 'https://sandbox.textral.alacrity.ai';
+const repoUrl = 'https://github.com/alacrity-ai/TextralAI';
+---
+
+<section class="relative overflow-hidden py-24 md:py-32">
+  <div
+    class="absolute inset-0 bg-subtle-glow opacity-60"
+    aria-hidden="true"
+  ></div>
+  <div class="container-default relative">
+    <div class="mx-auto max-w-3xl text-center">
+      <h2
+        class="font-display text-4xl font-bold tracking-tight text-text-primary md:text-5xl"
+      >
+        Put your docs to work.
+      </h2>
+      <p
+        class="mx-auto mt-6 max-w-prose text-lg text-text-secondary md:text-xl"
+      >
+        Spin up a tenant. Ingest your first document. Watch your agent
+        cite it. All in under three minutes.
+      </p>
+
+      <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+        <a href={sandboxUrl} class="btn-primary">
+          Try the sandbox
+          <span aria-hidden="true">→</span>
+        </a>
+        <a href={repoUrl} class="btn-secondary" rel="noopener">
+          View on GitHub
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <p class="mt-6 text-sm text-text-tertiary">
+        Free during beta. No credit card.
+      </p>
+    </div>
+  </div>
+</section>

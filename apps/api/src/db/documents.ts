@@ -182,6 +182,26 @@ export async function getUploadIntent(
   );
 }
 
+/** Find an existing document in a namespace by title (filename). Used
+ *  by the bulk-ingest finalize loop to dedupe-by-title when a caller
+ *  re-runs a bulk against the same corpus — same filename + same
+ *  content_hash → skip; same filename + different bytes → new version
+ *  on the existing document (per `on_existing` policy). */
+export async function findDocumentByTitleInNamespace(
+  db: Db,
+  tenantId: string,
+  namespaceId: string,
+  title: string,
+): Promise<DocumentRow | null> {
+  return await db.one<DocumentRow>(
+    `SELECT * FROM documents
+        WHERE tenant_id = ? AND namespace_id = ? AND title = ?
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC LIMIT 1`,
+    [tenantId, namespaceId, title],
+  );
+}
+
 export async function insertDocument(
   db: Db,
   tenant_id: string,

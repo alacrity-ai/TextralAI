@@ -27,6 +27,13 @@ import type {
   Chunk,
   UploadResponse,
   FinalizeResponse,
+  BulkSubmitRequest,
+  BulkSubmitResponse,
+  BulkJobStatus,
+  BulkJobFile,
+  BulkJobFileListResponse,
+  BulkJobListResponse,
+  BulkJobOk,
 } from '@textral/contracts';
 import { TextralApiError } from './errors.js';
 
@@ -249,6 +256,40 @@ export class TextralClient {
       ),
     revoke: (id: string): Promise<{ ok: true }> =>
       this._call<{ ok: true }>('DELETE', `/v1/infra-keys/${encodeURIComponent(id)}`),
+  };
+
+  // ── bulk ingest ─────────────────────────────────────────────────
+  // Multi-file ingestion with one shared embedding/chunking config.
+  // Low-level mapping below; high-level orchestration helper lives
+  // in `bulk-orchestrator.ts` (handles parallel uploads + polling).
+  bulkIngest = {
+    submit: (body: BulkSubmitRequest): Promise<BulkSubmitResponse> =>
+      this._call<BulkSubmitResponse>('POST', '/v1/ingest/bulk', body),
+    finalize: (id: string): Promise<BulkJobOk> =>
+      this._call<BulkJobOk>('POST', `/v1/ingest/bulk/${encodeURIComponent(id)}/finalize`),
+    get: (id: string): Promise<BulkJobStatus> =>
+      this._call<BulkJobStatus>('GET', `/v1/ingest/bulk/${encodeURIComponent(id)}`),
+    files: (
+      id: string,
+      q: { state?: string; page?: number; page_size?: number } = {},
+    ): Promise<BulkJobFileListResponse> =>
+      this._call<BulkJobFileListResponse>(
+        'GET',
+        `/v1/ingest/bulk/${encodeURIComponent(id)}/files${qs(q)}`,
+      ),
+    cancel: (id: string): Promise<BulkJobOk> =>
+      this._call<BulkJobOk>('DELETE', `/v1/ingest/bulk/${encodeURIComponent(id)}`),
+    retry: (id: string): Promise<BulkJobOk> =>
+      this._call<BulkJobOk>('POST', `/v1/ingest/bulk/${encodeURIComponent(id)}/retry`),
+    list: (
+      q: { namespace?: string; state?: string; limit?: number; cursor?: string } = {},
+    ): Promise<BulkJobListResponse> =>
+      this._call<BulkJobListResponse>('GET', `/v1/ingest/bulk${qs(q)}`),
+    /** Per-file PUT URL the submit response gives back. Caller PUTs
+     *  directly; this helper just exposes the absolute URL builder
+     *  so the SDK orchestrator and the Sandbox can share it. */
+    uploadUrlFor: (bulkJobId: string, ordinal: number): string =>
+      `${this.baseUrl}/v1/ingest/bulk/${encodeURIComponent(bulkJobId)}/files/${ordinal}/data`,
   };
 
   // ── admin ───────────────────────────────────────────────────────

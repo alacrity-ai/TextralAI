@@ -23,7 +23,9 @@ export type Prefix =
   | 'evrun' // eval run (Phase 7)
   | 'evres' // eval result (Phase 7)
   | 'evf' // email verification token row (Phase B — TENANT_REGISTRATION)
-  | 'mcp'; // mcp tool call audit row
+  | 'mcp' // mcp tool call audit row
+  | 'bjk' // bulk ingest job
+  | 'bjku'; // bulk ingest per-file upload slot
 
 /** Generate a prefixed ULID, e.g. `doc_01HZ8YQ8P...`. */
 export function newId(prefix: Prefix): string {

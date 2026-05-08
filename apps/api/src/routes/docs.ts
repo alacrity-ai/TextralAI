@@ -45,6 +45,7 @@ const TAG_GROUPS = [
       'Infra Keys',
       'Namespaces',
       'Documents',
+      'Bulk Ingest',
       'Chunks',
       'Ingestion',
       'Query',

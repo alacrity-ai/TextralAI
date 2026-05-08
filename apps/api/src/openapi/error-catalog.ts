@@ -306,6 +306,108 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: 'Public auth endpoint (`/v1/auth/register` or `/v1/auth/recover`) exceeded the per-IP per-minute cap.',
     recovery: 'Wait one minute and retry; the limit is intentionally tight (5/min for register, 3/min for recover).',
   },
+
+  // ── Bulk ingest ────────────────────────────────────────────────────
+  BULK_TOO_MANY_FILES: {
+    http: 413,
+    when: 'Bulk manifest exceeded the 1000-files-per-job cap.',
+    recovery: 'Submit multiple smaller bulk jobs. >1000-file workflows are on the roadmap (`bulk_job_group_id`).',
+  },
+  BULK_BYTES_EXCEEDED: {
+    http: 413,
+    when: 'Bulk manifest aggregate size exceeded the 5 GB-per-job cap.',
+    recovery: 'Submit multiple smaller bulk jobs. Per-file cap remains 25 MB.',
+  },
+  BULK_DUPLICATE_FILENAMES_IN_JOB: {
+    http: 400,
+    when: 'Two or more files in the same manifest declared the same `filename`.',
+    recovery: 'Make filenames unique within a single bulk job. Resubmit.',
+  },
+  BULK_DIMENSION_LOCK_MISMATCH: {
+    http: 409,
+    when: 'Manifest embedding dimensions conflict with the namespace dim-lock.',
+    recovery: 'Ingest into a namespace whose `embedding_dimensions` matches your config, or create a new namespace at the right dim.',
+  },
+  BULK_NAMESPACE_NOT_FOUND: {
+    http: 404,
+    when: 'Manifest references a namespace slug not visible to the caller.',
+    recovery: 'Create the namespace via `POST /v1/namespaces` first; verify the slug is correct.',
+  },
+  BULK_PROVIDER_KEY_NOT_FOUND: {
+    http: 400,
+    when: 'Manifest references a `provider_key_ref` (or `provider_key_id`) that doesn\'t resolve for this tenant.',
+    recovery: 'Register the provider key via `POST /v1/provider-keys`, or pass the existing key\'s id.',
+  },
+  BULK_QUOTA_EXCEEDED: {
+    http: 429,
+    when: 'Tenant has 10 active bulk jobs already; the limit blocks new submissions.',
+    recovery: 'Cancel a stuck job or wait for an existing one to terminate.',
+  },
+  BULK_DUPLICATE_REQUEST_ID_DIFFERENT_MANIFEST: {
+    http: 409,
+    when: '`client_request_id` reused within 24h with a different file set.',
+    recovery: 'Use a fresh `client_request_id` for distinct manifests; same id only for retries of the same manifest.',
+  },
+  BULK_JOB_NOT_FOUND: {
+    http: 404,
+    when: 'No bulk job exists for the given `bulk_job_id` (or it isn\'t visible to the caller).',
+    recovery: 'Verify the `bulk_job_id`. Expired or cancelled jobs are listable via `GET /v1/ingest/bulk?state=expired`.',
+  },
+  BULK_JOB_TERMINAL: {
+    http: 409,
+    when: 'Operation requires a non-terminal bulk job; current state is `cancelled` / `expired` / etc.',
+    recovery: 'Submit a new bulk job for the same files.',
+  },
+  BULK_JOB_HAS_SUCCEEDED_FILES: {
+    http: 409,
+    when: '`DELETE /v1/ingest/bulk/{id}` refuses because at least one file already succeeded.',
+    recovery: 'For audit cleanliness, cancellation must be all-or-nothing. Submit a new job for the remaining files; do not cancel.',
+  },
+  BULK_JOB_CANCELLED: {
+    http: 200,
+    when: 'Per-file terminal cause when the bulk job was cancelled before this file finished.',
+    recovery: 'Resubmit the file in a new bulk job.',
+  },
+  BULK_FILE_NOT_FOUND: {
+    http: 404,
+    when: 'Per-file ordinal doesn\'t exist on the bulk job.',
+    recovery: 'Verify the `ordinal` from the original submit response.',
+  },
+  BULK_FILE_HASH_MISMATCH: {
+    http: 400,
+    when: 'PUT body size differs from the declared `size_bytes` on the manifest entry.',
+    recovery: 'Re-PUT with the correct bytes, or submit a new manifest with the correct size.',
+  },
+  BULK_FILE_UPLOAD_EXPIRED: {
+    http: 410,
+    when: 'Per-file upload URL expired (7 days from issue) or R2 tmp object disappeared.',
+    recovery: 'Submit a new bulk job; the new manifest will issue fresh upload URLs.',
+  },
+  BULK_FILE_UPLOAD_INVALID_STATE: {
+    http: 400,
+    when: 'PUT received against a file row not in `pending` state.',
+    recovery: 'A successful upload is single-shot. To replace bytes, use `POST /v1/ingest/bulk/{id}/retry` after marking the file failed.',
+  },
+  BULK_FILE_FORMAT_UNSUPPORTED: {
+    http: 415,
+    when: 'A file\'s declared (or detected) content-type isn\'t supported by the chunker.',
+    recovery: 'Convert to a supported format (Markdown, PDF, plain text). Roadmap: more formats via the connector marketplace.',
+  },
+  BULK_FILE_PROVIDER_THROTTLED: {
+    http: 429,
+    when: 'Per-file ingestion failed because the embedding provider rate-limited the queue.',
+    recovery: 'Retry the failed files via `POST /v1/ingest/bulk/{id}/retry`. Consider raising your provider\'s rate cap.',
+  },
+  BULK_FILE_FINALIZE_FAILED: {
+    http: 500,
+    when: 'Per-file finalize raised an unexpected error (R2 read, hash compute, document insert, or version insert).',
+    recovery: 'Check `error_detail` on the file row. Retry via `POST /v1/ingest/bulk/{id}/retry`.',
+  },
+  BULK_FILE_INGEST_FAILED: {
+    http: 500,
+    when: 'Per-file ingestion job terminated `failed`; surfaces the underlying ingestion `error_code`.',
+    recovery: 'Check `error_detail`. Retry via `POST /v1/ingest/bulk/{id}/retry` once the underlying issue is resolved.',
+  },
 };
 
 /** Render the catalog as an HTML table for embedding in

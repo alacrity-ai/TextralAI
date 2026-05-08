@@ -238,6 +238,39 @@ Documents that are no longer needed can be soft-deleted via
 \`DELETE /v1/documents/{id}\` — chunks are kept (audit) but the
 document is removed from query results.`,
 
+  'Bulk Ingest': `**Bulk Ingest** is the multi-file companion to the
+single-file ingest path. One manifest, one shared embedding +
+chunking config, up to 1000 files per job. Designed so agents and UIs
+never have to base64-shuttle file bytes through their own context.
+
+The lifecycle is:
+
+1. \`POST /v1/ingest/bulk\` — manifest of \`{ filename, size_bytes,
+   content_type }\` rows + a shared \`config\`. Returns a
+   \`bulk_job_id\` and one upload URL per file.
+2. \`PUT\` each file to its upload URL (Worker-proxied). Per-file
+   isolation: a single failed upload doesn't block the others.
+3. \`POST /v1/ingest/bulk/{id}/finalize\` (skipped when
+   \`auto_finalize: true\`, which is the default for SDK and MCP
+   submitters; the Sandbox sets \`false\` so the user can review
+   before paid work begins). Server runs per-file finalize: HEAD →
+   sha256 → dedupe → register document → enqueue ingestion job.
+4. \`GET /v1/ingest/bulk/{id}\` — aggregate state, progress %, first
+   failure, ready-to-paste audit query filter
+   (\`bulk_job_id:bjk_…\`). The status reconciles per-file state with
+   the underlying \`ingestion_jobs\` table on every read.
+
+**Fail-fast guarantees.** Dim-lock conflicts and quota errors are
+caught before any presigned URL is issued — no wasted uploads, no
+wasted embeddings.
+
+**Homogeneous config in v1.** Every file in a bulk job applies the
+same embedding provider/model/dimensions, chunking profile, and
+provider-key reference. Heterogeneous corpora submit two jobs.
+
+See [BULK_UPLOADS_DESIGN.md](https://github.com/alacrity-ai/TextralAI/blob/main/docs/development/bulk_ingest/BULK_UPLOADS_DESIGN.md)
+for the full design.`,
+
   Chunks: `**Chunks** are the retrievable units inside a document
 version. Ingestion's chunk + embed stages produce them; retrieval and
 re-ranking operate on them; citations point to them.

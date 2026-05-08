@@ -27,6 +27,13 @@ import {
   RedeemRequest as RedeemRequestRaw,
   AuthOkResponse as AuthOkResponseRaw,
   RedeemResponse as RedeemResponseRaw,
+  BulkSubmitRequest as BulkSubmitRequestRaw,
+  BulkSubmitResponse as BulkSubmitResponseRaw,
+  BulkJobStatus as BulkJobStatusRaw,
+  BulkJobFile as BulkJobFileRaw,
+  BulkJobFileListResponse as BulkJobFileListResponseRaw,
+  BulkJobListResponse as BulkJobListResponseRaw,
+  BulkJobOk as BulkJobOkRaw,
 } from '@textral/contracts';
 import { z } from './z.js';
 
@@ -38,6 +45,30 @@ export const ProviderKeySchema = ProviderKeyRaw.openapi('ProviderKey');
 export const ProviderKeyCreateSchema = ProviderKeyCreateRaw.openapi('ProviderKeyCreate');
 export const InfraKeySchema = InfraKeyRaw.openapi('InfraKey');
 export const InfraKeyCreateSchema = InfraKeyCreateRaw.openapi('InfraKeyCreate');
+
+// ── Bulk ingest ────────────────────────────────────────────────────────
+export const BulkSubmitRequestSchema = BulkSubmitRequestRaw.openapi('BulkSubmitRequest');
+export const BulkSubmitResponseSchema = BulkSubmitResponseRaw.openapi('BulkSubmitResponse');
+export const BulkJobStatusSchema = BulkJobStatusRaw.openapi('BulkJobStatus');
+export const BulkJobFileSchema = BulkJobFileRaw.openapi('BulkJobFile');
+export const BulkJobFileListResponseSchema = BulkJobFileListResponseRaw.openapi('BulkJobFileListResponse');
+export const BulkJobListResponseSchema = BulkJobListResponseRaw.openapi('BulkJobListResponse');
+export const BulkJobOkSchema = BulkJobOkRaw.openapi('BulkJobOk');
+
+export const BulkJobIdParam = z.object({
+  id: z.string().openapi({
+    param: { name: 'id', in: 'path' },
+    example: 'bjk_01HZQ...',
+  }),
+});
+
+export const BulkUploadParam = z.object({
+  id: z.string().openapi({ param: { name: 'id', in: 'path' } }),
+  ordinal: z.coerce.number().int().openapi({
+    param: { name: 'ordinal', in: 'path' },
+    example: 0,
+  }),
+});
 
 // Path parameter shapes. `.openapi({ param: ... })` is how
 // @hono/zod-openapi tags param descriptions / examples.

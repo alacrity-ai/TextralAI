@@ -6,6 +6,7 @@ export * from './provider-key.js';
 export * from './infra-key.js';
 export * from './provider.js';
 export * from './ingest.js';
+export * from './bulk-ingest.js';
 export * from './chunk.js';
 export * from './query.js';
 export * from './eval.js';

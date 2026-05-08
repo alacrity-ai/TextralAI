@@ -10,3 +10,10 @@ export {
   type IngestionJobCreateResponse,
 } from './client.js';
 export { TextralApiError } from './errors.js';
+export {
+  bulkIngestOrchestrate,
+  pollBulkJob,
+  type BulkOrchestrateInput,
+  type BulkOrchestrateFile,
+  type BulkOrchestrateResult,
+} from './bulk-orchestrator.js';

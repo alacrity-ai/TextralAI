@@ -8,7 +8,7 @@ parallel and several have dependencies on each other (see each doc's
 ## Already on the roadmap
 
 - [x] **MCP Environments** — multi-environment MCP support. See [`MCP_ON_CLOUDFLARE.md`](./MCP_ON_CLOUDFLARE.md). _(✓ resolved by MCP V2 — see banner.)_
-- [ ] **Bulk Upload** — multi-file ingestion through API/MCP/sandbox. See [`BULK_UPLOAD_SANDBOX.md`](./BULK_UPLOAD_SANDBOX.md), also [`LARGE_INGEST_ISSUE.md`](./LARGE_INGEST_ISSUE.md).
+- [ ] **Bulk Upload** — multi-file ingestion through API/MCP/sandbox. Canonical design + implementation plan live in [`docs/development/bulk_ingest/`](../development/bulk_ingest/) (`BULK_UPLOADS_DESIGN.md` + `BULK_UPLOADS_IMPLEMENTATION.md`). Historical context: [`BULK_UPLOAD_SANDBOX.md`](./BULK_UPLOAD_SANDBOX.md) (problem statement), [`LARGE_INGEST_ISSUE.md`](./LARGE_INGEST_ISSUE.md) (the MCP-side b64-into-context failure mode).
 - [ ] **Intent-Driven MCP** — smarter MCP tool routing. See [`INTENT_DRIVEN_MCP.md`](./INTENT_DRIVEN_MCP.md).
 - [ ] **Integrations** — third-party source connectors. See [`INTEGRATIONS.md`](./INTEGRATIONS.md). _Pairs with the connector framework in [`CONNECTOR_MARKETPLACE.md`](./CONNECTOR_MARKETPLACE.md)._
 

@@ -37,12 +37,22 @@ interface ListResponse {
   next_cursor: string | null;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
 export function IngestHistory() {
   const activeJobs = useActiveJobs();
   const { showToast } = useToast();
   const [rows, setRows] = useState<IngestionJob[] | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [pageSize, setPageSize] = useState<PageSize>(25);
+  // Cursor stack: cursors[i] is the cursor passed to fetch page i+1.
+  // cursors[0] is null (first page); cursors[i>0] is the next_cursor
+  // returned by page i-1. Going forward pushes; going back just
+  // decrements the index (we keep the stack so re-pagination is free).
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [stageCache, setStageCache] = useState<Record<string, StageAttempt[]>>({});
   const [loading, setLoading] = useState(true);
@@ -56,18 +66,20 @@ export function IngestHistory() {
     return m;
   }, [activeJobs.jobs]);
 
-  async function fetchPage(cursor: string | null = null, replace = true) {
+  async function fetchPage(cursor: string | null) {
     setLoading(true);
     setErr(null);
     try {
       const params = new URLSearchParams();
       const csv = STATUS_TO_CSV[filter];
       if (csv) params.set('status', csv);
-      params.set('limit', '50');
+      params.set('limit', String(pageSize));
       if (cursor) params.set('cursor', cursor);
       const r = await api<ListResponse>('GET', `/v1/ingestion-jobs?${params.toString()}`);
       setNextCursor(r.next_cursor);
-      setRows((prev) => (replace || !prev ? r.data : [...prev, ...r.data]));
+      setRows(r.data);
+      // Collapse any expanded row that's not on this page.
+      setExpanded((curr) => (curr && r.data.some((j) => j.id === curr) ? curr : null));
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
       setErr(msg);
@@ -76,12 +88,34 @@ export function IngestHistory() {
     }
   }
 
-  // Re-fetch when the filter chip changes. fetchPage isn't a dep
-  // (it's stable enough — closes over `filter` already and we don't
-  // memoize it; including it would just thrash the effect).
+  // Re-fetch on any nav change. Filter / pageSize changes reset the
+  // cursor stack to a fresh first page; the second effect handles
+  // page navigation within the current stack.
   useEffect(() => {
-    void fetchPage(null, true);
-  }, [filter]); // fetchPage intentionally excluded
+    setCursors([null]);
+    setPageIndex(0);
+    void fetchPage(null);
+  }, [filter, pageSize]);
+
+  useEffect(() => {
+    if (cursors.length <= pageIndex) return;
+    void fetchPage(cursors[pageIndex] ?? null);
+    // pageIndex change is the trigger; cursors mutates in lockstep
+    // when we push forward, so depending on it directly is safe.
+  }, [pageIndex, cursors]);
+
+  function gotoNextPage() {
+    if (!nextCursor) return;
+    // Drop anything past the current index (e.g. user went back +
+    // changed filter — though filter resets the stack already).
+    setCursors((prev) => [...prev.slice(0, pageIndex + 1), nextCursor]);
+    setPageIndex((i) => i + 1);
+  }
+
+  function gotoPrevPage() {
+    if (pageIndex === 0) return;
+    setPageIndex((i) => i - 1);
+  }
 
   async function expand(jobId: string) {
     if (expanded === jobId) {
@@ -109,8 +143,8 @@ export function IngestHistory() {
     try {
       await activeJobs.cancelJob(jobId);
       showToast(`Cancelling ${jobId}`, 'info');
-      // Refresh the list so the row reflects the new status.
-      void fetchPage(null, true);
+      // Refresh the current page so the row reflects the new status.
+      void fetchPage(cursors[pageIndex] ?? null);
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
       showToast(`Cancel failed: ${msg}`, 'error');
@@ -139,9 +173,36 @@ export function IngestHistory() {
           </button>
         ))}
         <span style={{ flex: 1 }} />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 11,
+            color: colors.textMuted,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          <span>per page</span>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value) as PageSize)}
+            style={pageSizeSelect}
+            aria-label="Rows per page"
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n} style={{ background: colors.bgElevated }}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
         <Link
           to="/ingest"
           style={{
+            marginLeft: spacing.md,
             fontSize: 12,
             color: colors.textMuted,
             textDecoration: 'none',
@@ -230,14 +291,43 @@ export function IngestHistory() {
         </Card>
       )}
 
-      {nextCursor && (
-        <div style={{ marginTop: spacing.lg, display: 'flex', justifyContent: 'center' }}>
+      {rows && rows.length > 0 && (pageIndex > 0 || nextCursor !== null) && (
+        <div
+          style={{
+            marginTop: spacing.lg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: spacing.md,
+          }}
+        >
           <Button
             variant="secondary"
-            onClick={() => fetchPage(nextCursor, false)}
-            loading={loading}
+            size="sm"
+            onClick={gotoPrevPage}
+            disabled={pageIndex === 0 || loading}
           >
-            Load more
+            ← Previous
+          </Button>
+          <span
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: colors.textMuted,
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Page {pageIndex + 1}
+            {nextCursor === null && pageIndex > 0 ? ' (last)' : ''}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={gotoNextPage}
+            disabled={!nextCursor || loading}
+          >
+            Next →
           </Button>
         </div>
       )}
@@ -324,6 +414,18 @@ const filterChip: React.CSSProperties = {
   fontFamily: "'DM Sans', sans-serif",
   cursor: 'pointer',
   transition: 'background 120ms ease, color 120ms ease',
+};
+
+const pageSizeSelect: React.CSSProperties = {
+  background: colors.bgInput,
+  color: colors.textPrimary,
+  border: `1px solid ${colors.border}`,
+  borderRadius: 4,
+  padding: '4px 8px',
+  fontSize: 11,
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+  outline: 'none',
 };
 
 const filterChipActive: React.CSSProperties = {

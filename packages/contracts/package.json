@@ -1,6 +1,6 @@
 {
   "name": "@textral/contracts",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "description": "Zod schemas + TypeScript contracts for the Textral REST API. Used by @textral/sdk and @textral/mcp.",

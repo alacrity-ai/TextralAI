@@ -13,6 +13,7 @@
 
 import app from './app.js';
 import { processIngestQueue, type IngestQueueMessage } from './runtime/cf/queue-consumer.js';
+import { dispatchCron } from './scheduled/index.js';
 import type { Env } from './types.js';
 import { buildCfBindings } from './runtime/cf/bindings.js';
 
@@ -26,5 +27,13 @@ export default {
   async queue(batch, env) {
     const bindings = buildCfBindings(env, null);
     await processIngestQueue(batch as MessageBatch<IngestQueueMessage>, bindings);
+  },
+  async scheduled(event, env, ctx) {
+    const bindings = buildCfBindings(env, ctx);
+    // ctx.waitUntil keeps the dispatcher alive past `scheduled`'s
+    // synchronous return, mirroring how `fetch` waits on async
+    // background work. Without it, a slow cron could be cut off
+    // mid-run when the handler returns.
+    ctx.waitUntil(dispatchCron(event.cron, bindings));
   },
 } satisfies ExportedHandler<Env, IngestQueueMessage>;

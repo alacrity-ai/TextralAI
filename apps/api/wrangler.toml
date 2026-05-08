@@ -78,6 +78,15 @@ name = "textral-api"
 workers_dev = false
 preview_urls = false
 
+# Scheduled tasks. The dispatcher in src/scheduled/index.ts routes
+# event.cron → CronJob.run by exact-string match. Adding a cron is
+# a four-step PR: implement runner → register in SCHEDULES → add
+# pattern here → document in docs/development/cron/CRON_SCAFFOLD.md.
+[env.prod.triggers]
+crons = [
+  "0 3 * * *",   # 03:00 UTC daily — bulk-job-expire
+]
+
 [env.prod.vars]
 ENV = "prod"
 ENABLE_DEBUG_ROUTES = "false"
@@ -153,6 +162,14 @@ new_sqlite_classes = ["IngestContainer"]
 name = "textral-api-dev"
 workers_dev = true
 preview_urls = false
+
+# Mirror of prod cron schedule against the dev D1/R2 — keeps the
+# cleanup logic exercised against dev data and surfaces issues
+# before they hit prod. See `docs/development/cron/CRON_SCAFFOLD.md`.
+[env.dev.triggers]
+crons = [
+  "0 3 * * *",   # 03:00 UTC daily — bulk-job-expire (dev mirror)
+]
 
 [env.dev.vars]
 ENV = "dev"

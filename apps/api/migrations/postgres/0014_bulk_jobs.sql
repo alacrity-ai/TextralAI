@@ -1,8 +1,26 @@
 -- 0014 — bulk_jobs. Postgres parallel.
 --
 -- See migrations/sqlite/0014_bulk_jobs.sql for the full design rationale.
--- Postgres flavor uses BIGINT for epoch-ms timestamps and BOOLEAN for
--- auto_finalize. JSONB for config_json. Otherwise identical structure.
+--
+-- Cross-runtime parity decisions (matches the convention from
+-- 0002_documents_jobs_chunks.sql for `dead_lettered`, `attempt_count`,
+-- and the usage_records counter columns):
+--   * Booleans (`auto_finalize`) are stored as BIGINT 0|1 rather than
+--     native BOOLEAN. The pg-db adapter's setTypeParser(20) coerces
+--     BIGINT to a JS `number`; SQLite's INTEGER also returns `number`.
+--     Native BOOLEAN would arrive as a JS `boolean` from Postgres but
+--     `0|1` from SQLite — and existing route code treats these
+--     fields uniformly (`if (job.auto_finalize)` works for both, but
+--     `WHERE auto_finalize = 1` in SQL would only work for the
+--     INTEGER form).
+--   * Counter columns (`total_files`, `files_*`) are BIGINT in
+--     Postgres / INTEGER in SQLite — same as `dead_lettered`,
+--     `attempt_count`, `usage_records.queries`. The pg-db adapter
+--     coerces BIGINT to `number` on read.
+--   * Timestamps are BIGINT epoch ms.
+--   * `config_json` is JSONB; the pg-db type-parser passes it
+--     through as a raw string so callers can `JSON.parse(row.x)`
+--     identically across runtimes.
 
 CREATE TABLE bulk_jobs (
     bulk_job_id        TEXT PRIMARY KEY,
@@ -17,13 +35,13 @@ CREATE TABLE bulk_jobs (
                           'skip_if_unchanged','new_version','replace_current'
                        )),
     client_request_id  TEXT,
-    total_files        INTEGER NOT NULL,
-    files_uploaded     INTEGER NOT NULL DEFAULT 0,
-    files_succeeded    INTEGER NOT NULL DEFAULT 0,
-    files_failed       INTEGER NOT NULL DEFAULT 0,
-    files_skipped      INTEGER NOT NULL DEFAULT 0,
+    total_files        BIGINT NOT NULL,
+    files_uploaded     BIGINT NOT NULL DEFAULT 0,
+    files_succeeded    BIGINT NOT NULL DEFAULT 0,
+    files_failed       BIGINT NOT NULL DEFAULT 0,
+    files_skipped      BIGINT NOT NULL DEFAULT 0,
     source             TEXT NOT NULL CHECK (source IN ('api','mcp','sandbox')),
-    auto_finalize      BOOLEAN NOT NULL DEFAULT TRUE,
+    auto_finalize      BIGINT NOT NULL DEFAULT 1,
     created_at         BIGINT NOT NULL,
     finalized_at       BIGINT,
     completed_at       BIGINT,

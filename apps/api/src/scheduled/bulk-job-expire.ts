@@ -6,7 +6,7 @@
 // (state in 'complete' / 'partial' / 'failed' / 'cancelled') are
 // retained for 90 days for audit; a separate sweep handles those.
 
-import type { Env } from '../types.js';
+import type { Bindings } from '../runtime/shared/interfaces.js';
 import {
   listBulkJobFiles,
   listExpiredUnfinalizedBulkJobs,
@@ -22,7 +22,7 @@ export interface ExpireBulkJobsResult {
 }
 
 export async function expireUnfinalizedBulkJobs(
-  env: Env,
+  env: Bindings,
   now = Date.now(),
 ): Promise<ExpireBulkJobsResult> {
   const out: ExpireBulkJobsResult = { scanned: 0, expired: 0, errors: 0 };
@@ -39,7 +39,7 @@ export async function expireUnfinalizedBulkJobs(
   return out;
 }
 
-async function expireOneBulkJob(env: Env, job: BulkJobRow): Promise<void> {
+async function expireOneBulkJob(env: Bindings, job: BulkJobRow): Promise<void> {
   // Iterate per-file rows and delete each tmp R2 key. Best-effort —
   // R2 lifecycle TTL backstops anything we miss.
   try {

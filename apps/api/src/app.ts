@@ -7,12 +7,17 @@
 //   1. redaction         — installs console interceptors before any
 //                          logger or error reporter touches the request
 //   2. request-id        — every request gets a stable id
-//   3. (Phase-aware)     — auth on /v1/* via requireApiKey
+//   3. cors              — short-circuits OPTIONS preflight + adds
+//                          ACAO on non-preflight responses; runs
+//                          before auth so preflights don't require
+//                          the api key header
+//   4. (Phase-aware)     — auth on /v1/* via requireApiKey
 
 import { OpenAPIHono } from '@hono/zod-openapi';
 import type { Env, Variables } from './types.js';
 import { redactionMiddleware } from './middleware/redaction.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
+import { corsMiddleware } from './middleware/cors.js';
 import { handleError } from './middleware/error-envelope.js';
 import { requireApiKey } from './auth/middleware.js';
 import { healthRoute } from './routes/health.js';
@@ -65,6 +70,7 @@ const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>({
 // MUST come first — installs the console interceptor.
 app.use('*', redactionMiddleware);
 app.use('*', requestIdMiddleware);
+app.use('*', corsMiddleware);
 
 // Public — no auth required.
 mountDocs(app); // /openapi.json + /docs

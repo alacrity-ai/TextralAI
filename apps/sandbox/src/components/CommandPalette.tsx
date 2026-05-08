@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors, radii, spacing } from '../styles/tokens.js';
 import { useApiKey } from '../auth/ApiKeyContext.js';
+import { apiUrl } from '../api/client.js';
 
 interface Command {
   id: string;
@@ -77,7 +78,7 @@ export function CommandPalette({ open, onClose }: Props) {
         label: 'Open API reference (/docs)',
         hint: 'new tab',
         run: () => {
-          window.open('/docs', '_blank', 'noopener,noreferrer');
+          window.open(apiUrl('/docs'), '_blank', 'noopener,noreferrer');
         },
       },
       {
@@ -85,7 +86,7 @@ export function CommandPalette({ open, onClose }: Props) {
         label: 'Open OpenAPI JSON',
         hint: 'new tab',
         run: () => {
-          window.open('/openapi.json', '_blank', 'noopener,noreferrer');
+          window.open(apiUrl('/openapi.json'), '_blank', 'noopener,noreferrer');
         },
       },
       {

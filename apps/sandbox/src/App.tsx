@@ -3,6 +3,7 @@ import { ApiKeyProvider } from './auth/ApiKeyContext.js';
 import { ApiKeyGate } from './auth/ApiKeyGate.js';
 import { NamespaceProvider } from './context/NamespaceContext.js';
 import { ModelRegistryProvider } from './context/ModelRegistryContext.js';
+import { ProviderKeyRegistryProvider } from './context/ProviderKeyRegistryContext.js';
 import { ToastProvider } from './context/ToastContext.js';
 import { ConfirmProvider } from './context/ConfirmContext.js';
 import { AppShell } from './components/layout/AppShell.js';
@@ -24,6 +25,7 @@ export function App() {
             <ApiKeyGate>
               <NamespaceProvider>
                 <ModelRegistryProvider>
+                <ProviderKeyRegistryProvider>
                 <AppShell>
                   <Routes>
                     <Route path="/" element={<QueryBench />} />
@@ -38,6 +40,7 @@ export function App() {
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </AppShell>
+                </ProviderKeyRegistryProvider>
                 </ModelRegistryProvider>
               </NamespaceProvider>
             </ApiKeyGate>

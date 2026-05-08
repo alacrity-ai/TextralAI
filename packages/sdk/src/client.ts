@@ -5,7 +5,7 @@
 // Used by `@textral/mcp` today. The sandbox can adopt it after Phase
 // 1 lands.
 
-import {
+import type {
   NamespaceCreate as NamespaceCreateSchema,
   IngestRequest as IngestRequestSchema,
 } from '@textral/contracts';

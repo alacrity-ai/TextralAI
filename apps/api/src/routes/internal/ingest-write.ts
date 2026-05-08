@@ -434,8 +434,30 @@ internalRoute.post('/vectorize/upsert', async (c) => {
     embedding_dimensions: vidx.embedding_dimensions,
     namespace: vidx.vector_namespace,
   });
-  const { mutation_id } = await store.upsert(body.vectors);
-  return c.json({ ok: true, mutation_id }, 200);
+  try {
+    const { mutation_id } = await store.upsert(body.vectors);
+    return c.json({ ok: true, mutation_id }, 200);
+  } catch (e) {
+    const sample = body.vectors[0];
+    console.error('vectorize_upsert_failed', {
+      backend: vidx.vector_backend,
+      index_name: vidx.vector_index_name,
+      embedding_dimensions: vidx.embedding_dimensions,
+      vector_count: body.vectors.length,
+      sample_id: sample?.id,
+      sample_values_len: sample?.values?.length,
+      sample_metadata: sample?.metadata,
+      error_message: (e as Error).message,
+      error_name: (e as Error).name,
+      error_stack: (e as Error).stack?.split('\n').slice(0, 3).join(' | '),
+    });
+    throw new TextralError(
+      'INTERNAL',
+      500,
+      `Vectorize upsert failed: ${(e as Error).message}`,
+      { vector_count: body.vectors.length, dimensions: vidx.embedding_dimensions },
+    );
+  }
 });
 
 // ── POST /internal/vectorize/delete-by-filter ────────────────────────

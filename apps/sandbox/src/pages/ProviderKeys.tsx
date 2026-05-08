@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api, TextralApiError } from '../api/client.js';
 import type { ProviderKey, ProviderKeyTestResponse, ProviderName } from '../api/types.js';
+import { useProviderKeyRegistry } from '../context/ProviderKeyRegistryContext.js';
 import { Card } from '../components/ui/Card.js';
 import { Input } from '../components/ui/Input.js';
 import { Button } from '../components/ui/Button.js';
@@ -14,9 +15,11 @@ import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 const PROVIDERS: ProviderName[] = ['openai', 'anthropic', 'cohere', 'voyage', 'workers_ai'];
 
 export function ProviderKeys() {
-  const [keys, setKeys] = useState<ProviderKey[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+  const registry = useProviderKeyRegistry();
+  const keys = registry.list;
+  const loading = registry.loading;
+  const err = registry.error;
+
   const [testResults, setTestResults] = useState<
     Record<string, ProviderKeyTestResponse | { error: string }>
   >({});
@@ -29,24 +32,6 @@ export function ProviderKeys() {
 
   const { showToast } = useToast();
   const confirm = useConfirm();
-
-  async function refresh() {
-    setLoading(true);
-    setErr(null);
-    try {
-      const r = await api<{ data: ProviderKey[] }>('GET', '/v1/provider-keys');
-      setKeys(r.data);
-    } catch (e) {
-      const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
-      setErr(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   async function create() {
     if (!rawKey.trim() || !label.trim()) return;
@@ -61,7 +46,7 @@ export function ProviderKeys() {
       // Clear raw key immediately so it doesn't linger in React state.
       setRawKey('');
       setLabel('default');
-      void refresh();
+      void registry.refresh();
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
       showToast(`Register failed: ${msg}`, 'error');
@@ -89,7 +74,7 @@ export function ProviderKeys() {
     try {
       await api('DELETE', `/v1/provider-keys/${k.id}`);
       showToast(`Revoked ${k.provider}/${k.label}`, 'success');
-      void refresh();
+      void registry.refresh();
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
       showToast(`Revoke failed: ${msg}`, 'error');

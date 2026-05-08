@@ -33,7 +33,9 @@ export interface Env extends Bindings {
    *  + middleware redaction allowlist. CF-runtime-only diagnostic
    *  routes; Node runtime can carry through env if needed. */
   ENABLE_DEBUG_ROUTES: string; // "true" | "false"
-  /** PHASE_2_CLEANUP_TODO: read by CORS middleware (TBD audit). */
+  /** Comma-separated allowlist of browser origins that can make
+   *  cross-origin requests to the Worker. Read by
+   *  `middleware/cors.ts`. Use `*` to allow all (disables credentials). */
   ALLOWED_ORIGINS: string;
   /** PHASE_2_CLEANUP_TODO: only read by `runtime/cf/bindings.ts`
    *  to construct `aiGateway.baseUrl`. Drop after collapse. */

@@ -12,8 +12,6 @@
 
 import { Hono } from 'hono';
 import type { Env, Variables } from '../types.js';
-import { handleHttpMcp } from '@textral/mcp/http';
-import { TextralClient } from '@textral/sdk';
 import { recordMcpToolCall } from '../audit/mcp.js';
 import type { AuditEvent } from '@textral/mcp';
 
@@ -33,6 +31,15 @@ mcpRoute.all('/', async (c) => {
       501,
     );
   }
+
+  // Dynamic import keeps the MCP SDK (and its `ajv` transitive dep) out
+  // of the CF Worker bundle — workerd's CJS↔ESM shim trips on ajv's
+  // JSON-via-require pattern. CF always 501s above, so the bundle never
+  // executes these imports.
+  const [{ handleHttpMcp }, { TextralClient }] = await Promise.all([
+    import('@textral/mcp/http'),
+    import('@textral/sdk'),
+  ]);
 
   const tenantId = c.get('tenant_id') as string;
   const apiKeyId = (c.get('api_key_id') as string | undefined) ?? null;

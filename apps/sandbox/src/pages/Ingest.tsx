@@ -1,16 +1,20 @@
 import { useRef, useState } from 'react';
 import { useNamespace } from '../context/NamespaceContext.js';
+import { useModelRegistry } from '../context/ModelRegistryContext.js';
 import { api, apiRaw, TextralApiError } from '../api/client.js';
 import type {
   Document,
   FinalizeResponse,
   IngestionJobCreateResponse,
+  ProviderName,
   UploadResponse,
 } from '../api/types.js';
 import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { Card } from '../components/ui/Card.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
+import { ModelSelectField } from '../components/ui/ModelSelectField.js';
+import { ProviderKeySelectField } from '../components/ui/ProviderKeySelectField.js';
 import { IngestStreamLog } from '../components/IngestStreamLog.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 import { useToast } from '../context/ToastContext.js';
@@ -32,7 +36,7 @@ function toSameOriginPath(absoluteOrPath: string): string {
 interface FormState {
   title: string;
   doc_type: string;
-  embedding_provider: string;
+  embedding_provider: ProviderName;
   embedding_model: string;
   embedding_dimensions: number;
   embedding_provider_key_ref: string;
@@ -58,6 +62,7 @@ const DEFAULTS: FormState = {
 export function Ingest() {
   const { active } = useNamespace();
   const { showToast } = useToast();
+  const registry = useModelRegistry();
   const [file, setFile] = useState<File | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [busy, setBusy] = useState(false);
@@ -281,13 +286,22 @@ export function Ingest() {
             <SelectField
               label="Provider"
               value={form.embedding_provider}
-              onChange={(v) => patch('embedding_provider', v)}
+              onChange={(v) => patch('embedding_provider', v as ProviderName)}
               options={['openai', 'cohere', 'voyage', 'workers_ai']}
             />
-            <Input
+            <ModelSelectField
               label="Model"
               value={form.embedding_model}
-              onChange={(e) => patch('embedding_model', e.target.value)}
+              provider={form.embedding_provider}
+              kind="embedding"
+              onChange={(id) => {
+                const known = registry.byId(id);
+                setForm((f) => ({
+                  ...f,
+                  embedding_model: id,
+                  ...(known?.dimensions ? { embedding_dimensions: known.dimensions } : {}),
+                }));
+              }}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.md }}>
               <Input
@@ -296,10 +310,11 @@ export function Ingest() {
                 value={form.embedding_dimensions}
                 onChange={(e) => patch('embedding_dimensions', Number(e.target.value))}
               />
-              <Input
+              <ProviderKeySelectField
                 label="Provider key ref"
                 value={form.embedding_provider_key_ref}
-                onChange={(e) => patch('embedding_provider_key_ref', e.target.value)}
+                provider={form.embedding_provider}
+                onChange={(v) => patch('embedding_provider_key_ref', v)}
                 placeholder="default"
               />
             </div>

@@ -8,7 +8,6 @@
 // `current_stage`. The progress count is the count of distinct
 // stages observed so far.
 
-import type { TextralClient } from '@textral/sdk';
 import { TextralApiError } from '@textral/sdk';
 import type { IngestionJob } from '@textral/contracts';
 import type { ToolHandlerCtx } from '../tools/types.js';

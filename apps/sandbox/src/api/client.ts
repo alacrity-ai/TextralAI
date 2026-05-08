@@ -5,6 +5,15 @@
 
 import { z } from 'zod';
 
+// Build-time API origin. Empty string preserves relative-URL behavior so
+// vite-dev (proxy) and self-host (nginx) deploys keep working unchanged.
+// On Cloudflare Pages, set this at build time to the Worker's URL.
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '') as string;
+
+export function apiUrl(path: string): string {
+  return /^https?:\/\//i.test(path) ? path : `${API_BASE}${path}`;
+}
+
 const TextralErrorSchema = z.object({
   error: z.object({
     code: z.string(),
@@ -57,7 +66,7 @@ export async function api<T = unknown>(
   }
   // ...init must come BEFORE our overrides so init.headers doesn't
   // clobber the merged headers (which carry the api key).
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     ...init,
     method,
     headers,
@@ -117,7 +126,7 @@ export async function apiRaw(
   }
   // ...init must come BEFORE our overrides so init.headers doesn't
   // clobber the merged headers (which carry the api key).
-  return fetch(path, {
+  return fetch(apiUrl(path), {
     ...init,
     method,
     headers,

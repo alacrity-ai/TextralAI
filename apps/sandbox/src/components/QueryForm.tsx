@@ -3,8 +3,10 @@ import { useNamespace } from '../context/NamespaceContext.js';
 import { useModelRegistry } from '../context/ModelRegistryContext.js';
 import { Input } from './ui/Input.js';
 import { Button } from './ui/Button.js';
+import { ModelSelectField } from './ui/ModelSelectField.js';
+import { ProviderKeySelectField } from './ui/ProviderKeySelectField.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
-import type { ModelKind, ProviderName, QueryRequest } from '../api/types.js';
+import type { ProviderName, QueryRequest } from '../api/types.js';
 
 export interface QueryFormState {
   query: string;
@@ -300,7 +302,6 @@ export function QueryForm({
             value={form.embedding_model}
             provider={form.embedding_provider}
             kind="embedding"
-            registry={registry}
             onChange={(id) => {
               const known = registry.byId(id);
               setForm((f) => ({
@@ -316,10 +317,11 @@ export function QueryForm({
             value={form.embedding_dimensions}
             onChange={(e) => patch('embedding_dimensions', Number(e.target.value))}
           />
-          <Input
+          <ProviderKeySelectField
             label="Key ref"
             value={form.embedding_provider_key_ref}
-            onChange={(e) => patch('embedding_provider_key_ref', e.target.value)}
+            provider={form.embedding_provider}
+            onChange={(v) => patch('embedding_provider_key_ref', v)}
           />
         </FieldGrid>
       </Group>
@@ -337,13 +339,13 @@ export function QueryForm({
             value={form.inference_model}
             provider={form.inference_provider}
             kind="inference"
-            registry={registry}
             onChange={(id) => patch('inference_model', id)}
           />
-          <Input
+          <ProviderKeySelectField
             label="Key ref"
             value={form.inference_provider_key_ref}
-            onChange={(e) => patch('inference_provider_key_ref', e.target.value)}
+            provider={form.inference_provider}
+            onChange={(v) => patch('inference_provider_key_ref', v)}
           />
           <Input
             label="Max out tokens"
@@ -422,7 +424,6 @@ export function QueryForm({
             value={form.rerank_model}
             provider={form.rerank_provider === '' ? null : form.rerank_provider}
             kind="rerank"
-            registry={registry}
             allowEmpty
             emptyLabel="(inherit)"
             placeholder="inherit (e.g. rerank-2.5-lite)"
@@ -438,10 +439,13 @@ export function QueryForm({
             }}
             placeholder="inherit"
           />
-          <Input
+          <ProviderKeySelectField
             label="Key ref"
             value={form.rerank_provider_key_ref}
-            onChange={(e) => patch('rerank_provider_key_ref', e.target.value)}
+            provider={form.rerank_provider === '' ? null : form.rerank_provider}
+            onChange={(v) => patch('rerank_provider_key_ref', v)}
+            allowEmpty
+            emptyLabel="(inherit)"
             placeholder="inherit"
           />
         </FieldGrid>
@@ -610,101 +614,6 @@ function SelectField({
   );
 }
 
-/** Provider+kind-filtered model picker with a free-text escape hatch.
- *  The dropdown lists curated registry entries; switching to "Custom…"
- *  reveals a text input so users can enter a model id we haven't added
- *  to the registry yet. Mirrors the registry-staleness mitigation from
- *  the solution plan. */
-function ModelSelectField({
-  label,
-  value,
-  provider,
-  kind,
-  registry,
-  onChange,
-  allowEmpty,
-  emptyLabel,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  provider: ProviderName | null;
-  kind: ModelKind;
-  registry: ReturnType<typeof useModelRegistry>;
-  onChange: (id: string) => void;
-  allowEmpty?: boolean;
-  emptyLabel?: string;
-  placeholder?: string;
-}) {
-  const known = useMemo(
-    () => (provider ? registry.filter(provider, kind) : []),
-    [registry, provider, kind],
-  );
-  const isKnown = value === '' || known.some((m) => m.id === value);
-  const [custom, setCustom] = useState(!isKnown && value !== '');
-
-  // If the provider changes and the current model isn't in the new
-  // provider's list, leave the value alone but flip into custom mode so
-  // the user sees what's set instead of a silently-mismatched dropdown.
-  useEffect(() => {
-    if (value === '' || known.length === 0) return;
-    if (!known.some((m) => m.id === value)) setCustom(true);
-  }, [known, value]);
-
-  const selectValue = custom ? '__custom__' : value;
-  const showHint = registry.loading && known.length === 0;
-
-  return (
-    <div>
-      <FieldLabel>{label}</FieldLabel>
-      <select
-        value={selectValue}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v === '__custom__') {
-            setCustom(true);
-            return;
-          }
-          setCustom(false);
-          onChange(v);
-        }}
-        style={modelSelectStyle}
-        disabled={!provider}
-      >
-        {allowEmpty && (
-          <option value="" style={{ background: colors.bgElevated }}>
-            {emptyLabel ?? '(none)'}
-          </option>
-        )}
-        {known.map((m) => (
-          <option key={m.id} value={m.id} style={{ background: colors.bgElevated }}>
-            {m.id}
-            {m.tier ? ` · ${m.tier}` : ''}
-          </option>
-        ))}
-        <option value="__custom__" style={{ background: colors.bgElevated }}>
-          Custom…
-        </option>
-      </select>
-      {custom && (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder ?? 'Type a custom model ID'}
-          style={customInputStyle}
-        />
-      )}
-      {showHint && (
-        <div style={hintStyle}>Loading registry…</div>
-      )}
-      {!provider && (
-        <div style={hintStyle}>Pick a provider first</div>
-      )}
-    </div>
-  );
-}
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -782,39 +691,6 @@ const checkboxLabel: React.CSSProperties = {
   color: colors.textSecondary,
   cursor: 'pointer',
   marginTop: spacing.sm,
-};
-
-const modelSelectStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  background: colors.bgInput,
-  color: colors.textPrimary,
-  border: `1px solid ${colors.border}`,
-  borderRadius: radii.md,
-  fontSize: 14,
-  fontFamily: "'DM Sans', sans-serif",
-  outline: 'none',
-  cursor: 'pointer',
-};
-
-const customInputStyle: React.CSSProperties = {
-  width: '100%',
-  marginTop: spacing.xs,
-  background: colors.bgInput,
-  color: colors.textPrimary,
-  border: `1px solid ${colors.border}`,
-  borderRadius: radii.md,
-  padding: '10px 12px',
-  fontSize: 13,
-  fontFamily: fonts.mono,
-  outline: 'none',
-};
-
-const hintStyle: React.CSSProperties = {
-  marginTop: 6,
-  fontSize: 11,
-  fontFamily: fonts.mono,
-  color: colors.textMuted,
 };
 
 const inlineSelectStyle: React.CSSProperties = {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { colors, fonts } from '../../styles/tokens.js';
 import { useApiKey } from '../../auth/ApiKeyContext.js';
 import { NamespacePicker } from '../NamespacePicker.js';
+import { apiUrl } from '../../api/client.js';
 
 const NAV_LINKS: Array<{ to: string; label: string }> = [
   { to: '/', label: 'Query' },
@@ -141,11 +142,11 @@ export function Navbar() {
             >
               <MenuItem
                 label="API reference (/docs)"
-                onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}
+                onClick={() => window.open(apiUrl('/docs'), '_blank', 'noopener,noreferrer')}
               />
               <MenuItem
                 label="OpenAPI spec (/openapi.json)"
-                onClick={() => window.open('/openapi.json', '_blank', 'noopener,noreferrer')}
+                onClick={() => window.open(apiUrl('/openapi.json'), '_blank', 'noopener,noreferrer')}
               />
               <div style={{ height: 1, background: colors.border }} />
               <MenuItem

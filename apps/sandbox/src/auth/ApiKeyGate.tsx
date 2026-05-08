@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { Card } from '../components/ui/Card.js';
 import { colors, fonts, spacing } from '../styles/tokens.js';
+import { apiUrl } from '../api/client.js';
 
 export function ApiKeyGate({ children }: { children: ReactNode }) {
   const { key, setKey } = useApiKey();
@@ -18,7 +19,7 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch('/v1/me', {
+      const res = await fetch(apiUrl('/v1/me'), {
         headers: { 'x-textral-api-key': pending.trim() },
       });
       if (!res.ok) {
@@ -127,7 +128,7 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
             }}
           >
             New to Textral? See{' '}
-            <a href="/docs" target="_blank" rel="noopener noreferrer">
+            <a href={apiUrl('/docs')} target="_blank" rel="noopener noreferrer">
               /docs
             </a>{' '}
             for the API reference, or read{' '}

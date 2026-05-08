@@ -24,12 +24,13 @@ describe('classifyByStatus', () => {
 });
 
 describe('isFatal', () => {
-  it('marks invalid_api_key, insufficient_quota, refusal as fatal', () => {
+  it('marks invalid_api_key, insufficient_quota, refusal, bad_request as fatal', () => {
     expect(isFatal('invalid_api_key')).toBe(true);
     expect(isFatal('insufficient_quota')).toBe(true);
     expect(isFatal('unsupported_model')).toBe(true);
     expect(isFatal('context_length_exceeded')).toBe(true);
     expect(isFatal('refusal')).toBe(true);
+    expect(isFatal('bad_request')).toBe(true);
   });
 
   it('marks rate_limit, server_error, timeout, network, schema_violation as retryable', () => {
@@ -40,7 +41,6 @@ describe('isFatal', () => {
     expect(isFatal('schema_violation')).toBe(false);
     expect(isFatal('partial_batch')).toBe(false);
     expect(isFatal('malformed_response')).toBe(false);
-    expect(isFatal('bad_request')).toBe(false);
     expect(isFatal('unknown')).toBe(false);
   });
 });

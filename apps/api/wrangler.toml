@@ -142,7 +142,7 @@ preview_urls = false
 [env.dev.vars]
 ENV = "dev"
 ENABLE_DEBUG_ROUTES = "true"
-ALLOWED_ORIGINS = "http://localhost:5173"
+ALLOWED_ORIGINS = "http://localhost:5173,https://textral-sandbox-dev.pages.dev"
 CF_ACCOUNT_ID = "e2446fe227a630d5dd70c40c33456f1f"
 AI_GATEWAY_ID = "textral-dev"
 AI_GATEWAY_BYPASS = "false"

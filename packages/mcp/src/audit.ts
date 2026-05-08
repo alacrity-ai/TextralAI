@@ -64,7 +64,6 @@ export class ApiAuditWriter implements AuditWriter {
     try {
       await this.client.internal.submitMcpToolCall(event);
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('mcp audit write failed:', (e as Error).message);
     }
   }
@@ -155,7 +154,6 @@ export async function wrapWithAudit(
       ...(errorMessage ? { error_message: errorMessage } : {}),
     })
     .catch((e: Error) => {
-      // eslint-disable-next-line no-console
       console.error('mcp audit write failed:', e.message);
     });
 

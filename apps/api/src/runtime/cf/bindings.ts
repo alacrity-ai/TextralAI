@@ -22,8 +22,21 @@ import { AeMetricsSink, NoopMetricsSink } from './ae-metrics.js';
 import { Fts5SparseSearch } from './fts5-sparse-search.js';
 
 export function buildCfBindings(env: Env, ctx: ExecutionContext | null): Env {
+  // The Vectorize binding lives on `env.VECTORIZE_OPENAI_LARGE` (legacy
+  // CF binding name); `vectorStoreFor` reads it as `env.vectorize` (the
+  // runtime-shared shape). Inject it onto the env handed to the factory
+  // so the vectorize-backend branch can find the binding. Without this
+  // closure-time merge, `env.vectorize` is undefined and every
+  // vectorize-backed namespace upsert/query 400s with
+  // "no Vectorize binding is available on this deploy".
+  const envWithVectorize: Env = env.VECTORIZE_OPENAI_LARGE
+    ? ({
+        ...env,
+        vectorize: env.VECTORIZE_OPENAI_LARGE as unknown as VectorizeIndexHandle,
+      } as Env)
+    : env;
   const factory: VectorStoreFactory = {
-    forBinding: (b) => vectorStoreFor(env, b),
+    forBinding: (b) => vectorStoreFor(envWithVectorize, b),
   };
 
   const db = new D1Db(env.DB);

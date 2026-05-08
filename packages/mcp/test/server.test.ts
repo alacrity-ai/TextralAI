@@ -1,6 +1,6 @@
 // MCP server registry assertions. Holds shape — a regression test
-// guarding the 16-tool Phase 1 ship list. Adding/removing tools
-// requires adjusting these counts.
+// guarding the Phase 1 ship list. Adding/removing tools requires
+// adjusting these counts.
 
 import { describe, it, expect } from 'vitest';
 import { allTools } from '../src/tools/index.js';
@@ -8,8 +8,8 @@ import { allPrompts } from '../src/prompts/index.js';
 import { allResources } from '../src/resources/index.js';
 
 describe('@textral/mcp registries', () => {
-  it('ships exactly 16 tools', () => {
-    expect(allTools).toHaveLength(16);
+  it('ships exactly 17 tools', () => {
+    expect(allTools).toHaveLength(17);
   });
 
   it('ships 3 workflow prompts', () => {
@@ -61,6 +61,7 @@ describe('@textral/mcp registries', () => {
         'list_chunks',
         'list_documents',
         'list_failing_jobs',
+        'list_models',
         'list_namespaces',
         'list_provider_keys',
         'list_query_events',

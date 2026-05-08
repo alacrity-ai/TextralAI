@@ -104,6 +104,34 @@ export interface ProviderKeyTestResponse {
   error_message?: string;
 }
 
+/** Tenant-scoped credentials for vector-store backends. Pinecone today;
+ *  Qdrant Cloud / managed-Postgres later. Distinct table + endpoint
+ *  surface from provider keys because the resolution semantics differ
+ *  (at-most-one active per (tenant, provider)). */
+export type InfraProviderName = 'pinecone';
+
+export interface InfraKey {
+  id: string;
+  provider: InfraProviderName;
+  label: string;
+  prefix: string;
+  last_validated_at: number | null;
+  last_error_code: string | null;
+  created_at: number;
+}
+
+export interface InfraKeyCreate {
+  provider: InfraProviderName;
+  label: string;
+  key: string;
+}
+
+export interface InfraKeyTestResponse {
+  ok: boolean;
+  error_code?: string;
+  error_message?: string;
+}
+
 export interface Document {
   id: string;
   tenant_id: string;

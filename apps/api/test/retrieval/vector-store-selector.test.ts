@@ -91,29 +91,34 @@ describe('vectorStoreFor()', () => {
   });
 
   describe('pinecone backend', () => {
+    // Migration to per-tenant infra keys (table 0011): the factory
+    // reads the resolved Pinecone API key from `binding.pineconeApiKey`,
+    // which the call site populates via `resolveVectorBinding(env,
+    // tenantId, ...)`. The old `env.PINECONE_API_KEY` worker-secret
+    // path was removed.
     const binding: VectorBinding = {
       backend: 'pinecone',
       index_name: 'https://idx.svc.us-east-1.pinecone.io',
       embedding_dimensions: dims,
       namespace: 'lighthouse-tales',
+      pineconeApiKey: 'pcsk_test',
     };
 
-    it('throws BAD_REQUEST when PINECONE_API_KEY is unset on the deploy', () => {
-      expect(() => vectorStoreFor(envWith(), binding)).toThrow(/PINECONE_API_KEY is unset/i);
+    it('throws INFRA_KEY_NOT_FOUND when binding lacks pineconeApiKey', () => {
+      const noKey: VectorBinding = { ...binding };
+      delete noKey.pineconeApiKey;
+      expect(() => vectorStoreFor(envWith(), noKey)).toThrow(
+        /tenant-registered infra key/i,
+      );
     });
 
     it('throws BAD_REQUEST when binding lacks vector_index_name', () => {
       const noIdx: VectorBinding = { ...binding, index_name: null };
-      expect(() =>
-        vectorStoreFor(envWith({ PINECONE_API_KEY: 'pcsk_test' }), noIdx),
-      ).toThrow(/requires vector_index_name/i);
+      expect(() => vectorStoreFor(envWith(), noIdx)).toThrow(/requires vector_index_name/i);
     });
 
-    it('returns PineconeAdapter when both env + binding are populated', () => {
-      const store = vectorStoreFor(
-        envWith({ PINECONE_API_KEY: 'pcsk_test' }),
-        binding,
-      );
+    it('returns PineconeAdapter when binding carries the resolved api key', () => {
+      const store = vectorStoreFor(envWith(), binding);
       expect(store).toBeInstanceOf(PineconeAdapter);
     });
   });

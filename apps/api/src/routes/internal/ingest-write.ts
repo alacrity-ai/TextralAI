@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import { TextralError } from '@textral/contracts';
 import type { Env, Variables } from '../../types.js';
 import { internalAuth } from '../../middleware/internal-auth.js';
+import { resolveVectorBinding } from '../../auth/infra-key-resolver.js';
 import { recordIngestionUsage } from '../../observability/usage.js';
 import { writeMetric } from '../../observability/metrics.js';
 import { claimJob, heartbeatJob, transitionJob, DEFAULT_LEASE_MS } from '../../ingestion/lease.js';
@@ -439,13 +440,15 @@ internalRoute.post('/vectorize/upsert', async (c) => {
     throw new TextralError('INTERNAL', 500, 'version_index vanished mid-upsert');
   }
   // V3 Phase 1 — read the backend choice from the version_index row
-  // (denormalized from the namespace at vidx-create time).
-  const store = c.env.vectors.forBinding({
+  // (denormalized from the namespace at vidx-create time). For
+  // Pinecone we resolve the tenant's infra key here.
+  const binding = await resolveVectorBinding(c.env, job.tenant_id, {
     backend: vidx.vector_backend,
     index_name: vidx.vector_index_name,
     embedding_dimensions: vidx.embedding_dimensions,
     namespace: vidx.vector_namespace,
   });
+  const store = c.env.vectors.forBinding(binding);
   try {
     const { mutation_id } = await store.upsert(body.vectors);
     return c.json({ ok: true, mutation_id }, 200);
@@ -504,12 +507,13 @@ internalRoute.post('/vectorize/delete-by-filter', async (c) => {
   if (!vidx) {
     throw new TextralError('INTERNAL', 500, 'version_index vanished mid-delete');
   }
-  const store = c.env.vectors.forBinding({
+  const binding = await resolveVectorBinding(c.env, job.tenant_id, {
     backend: vidx.vector_backend,
     index_name: vidx.vector_index_name,
     embedding_dimensions: vidx.embedding_dimensions,
     namespace: vidx.vector_namespace,
   });
+  const store = c.env.vectors.forBinding(binding);
   await store.deleteByIds(ids);
   await deleteChunksByIds(c.env.db, ids);
   return c.json({ ok: true, deleted: ids.length, mutation_id: null }, 200);

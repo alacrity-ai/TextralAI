@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { api, TextralApiError } from '../api/client.js';
-import type { ProviderKey, ProviderKeyTestResponse, ProviderName } from '../api/types.js';
+import type {
+  InfraKey,
+  InfraKeyTestResponse,
+  InfraProviderName,
+  ProviderKey,
+  ProviderKeyTestResponse,
+  ProviderName,
+} from '../api/types.js';
 import { useProviderKeyRegistry } from '../context/ProviderKeyRegistryContext.js';
+import { useInfraKeyRegistry } from '../context/InfraKeyRegistryContext.js';
 import { Card } from '../components/ui/Card.js';
 import { Input } from '../components/ui/Input.js';
 import { Button } from '../components/ui/Button.js';
@@ -167,6 +175,257 @@ export function ProviderKeys() {
         <EmptyState
           title="No provider keys registered"
           description="Register at least one key per provider (e.g. openai/default) before running queries."
+        />
+      )}
+
+      {!loading && !err && keys.length > 0 && (
+        <div style={tableWrap}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <Th>provider</Th>
+                <Th>label</Th>
+                <Th>prefix</Th>
+                <Th>last validated</Th>
+                <Th>last error</Th>
+                <Th>created</Th>
+                <Th>actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {keys.map((k) => {
+                const result = testResults[k.id];
+                return (
+                  <tr key={k.id}>
+                    <Td>
+                      <Badge variant="info">{k.provider}</Badge>
+                    </Td>
+                    <Td mono>{k.label}</Td>
+                    <Td mono small>
+                      {k.prefix}…
+                    </Td>
+                    <Td mono small>
+                      {k.last_validated_at ? new Date(k.last_validated_at).toLocaleString() : '—'}
+                    </Td>
+                    <Td>
+                      {k.last_error_code ? (
+                        <Badge variant="danger">{k.last_error_code}</Badge>
+                      ) : (
+                        <span style={{ color: colors.textMuted }}>—</span>
+                      )}
+                    </Td>
+                    <Td mono small>
+                      {new Date(k.created_at).toLocaleDateString()}
+                    </Td>
+                    <Td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => test(k)}
+                          loading={!!testing[k.id]}
+                        >
+                          Test
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => remove(k)}>
+                          Revoke
+                        </Button>
+                        {result && 'ok' in result && result.ok && (
+                          <Badge variant="success">probe ok</Badge>
+                        )}
+                        {result && 'ok' in result && !result.ok && (
+                          <Badge variant="danger">{result.error_code ?? 'failed'}</Badge>
+                        )}
+                        {result && 'error' in result && (
+                          <Badge variant="danger">{result.error}</Badge>
+                        )}
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <InfraKeysSection />
+    </div>
+  );
+}
+
+const INFRA_PROVIDERS: InfraProviderName[] = ['pinecone'];
+
+/** Tenant-scoped credentials for vector-store backends. Same UX
+ *  shape as Provider Keys — register with raw key, list metadata,
+ *  revoke / test. KISS rule: at most one active key per (tenant,
+ *  provider). Re-register requires revoking the existing one. */
+function InfraKeysSection() {
+  const registry = useInfraKeyRegistry();
+  const keys = registry.list;
+  const loading = registry.loading;
+  const err = registry.error;
+
+  const [testResults, setTestResults] = useState<
+    Record<string, InfraKeyTestResponse | { error: string }>
+  >({});
+  const [testing, setTesting] = useState<Record<string, boolean>>({});
+
+  const [provider, setProvider] = useState<InfraProviderName>('pinecone');
+  const [label, setLabel] = useState('default');
+  const [rawKey, setRawKey] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const { showToast } = useToast();
+  const confirm = useConfirm();
+
+  async function create() {
+    if (!rawKey.trim() || !label.trim()) return;
+    setCreating(true);
+    try {
+      await api<InfraKey>('POST', '/v1/infra-keys', {
+        provider,
+        label: label.trim(),
+        key: rawKey,
+      });
+      showToast(`Registered ${provider}/${label}`, 'success');
+      setRawKey('');
+      setLabel('default');
+      void registry.refresh();
+    } catch (e) {
+      const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
+      showToast(`Register failed: ${msg}`, 'error');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function remove(k: InfraKey) {
+    const ok = await confirm({
+      title: 'Revoke infrastructure key?',
+      message: (
+        <span>
+          Soft-deletes{' '}
+          <code style={codeInline}>
+            {k.provider}/{k.label}
+          </code>{' '}
+          ({k.prefix}…). Pinecone-backed namespaces created against this key will fail subsequent
+          operations until a replacement is registered.
+        </span>
+      ),
+      danger: true,
+      confirmLabel: 'Revoke',
+    });
+    if (!ok) return;
+    try {
+      await api('DELETE', `/v1/infra-keys/${k.id}`);
+      showToast(`Revoked ${k.provider}/${k.label}`, 'success');
+      void registry.refresh();
+    } catch (e) {
+      const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
+      showToast(`Revoke failed: ${msg}`, 'error');
+    }
+  }
+
+  async function test(k: InfraKey) {
+    setTesting((t) => ({ ...t, [k.id]: true }));
+    setTestResults((r) => {
+      const { [k.id]: _drop, ...rest } = r;
+      return rest;
+    });
+    try {
+      const r = await api<InfraKeyTestResponse>('POST', `/v1/infra-keys/${k.id}/test`);
+      setTestResults((tr) => ({ ...tr, [k.id]: r }));
+    } catch (e) {
+      const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
+      setTestResults((tr) => ({ ...tr, [k.id]: { error: msg } }));
+    } finally {
+      setTesting((t) => ({ ...t, [k.id]: false }));
+    }
+  }
+
+  return (
+    <div style={{ marginTop: spacing.xxl }}>
+      <Card ruled style={{ marginBottom: spacing.lg }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            marginBottom: spacing.sm,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.22em',
+              color: colors.primary,
+              fontWeight: 500,
+            }}
+          >
+            Register an infrastructure key
+          </div>
+          <span
+            style={{
+              fontSize: 11,
+              color: colors.textMuted,
+              fontStyle: 'italic',
+              fontFamily: fonts.serif,
+            }}
+          >
+            One active key per backend. Tenant-scoped, never returned by the API after register.
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 2fr auto',
+            gap: spacing.md,
+            alignItems: 'flex-end',
+          }}
+        >
+          <SelectField
+            label="Provider"
+            value={provider}
+            onChange={(v) => setProvider(v as InfraProviderName)}
+            options={INFRA_PROVIDERS}
+          />
+          <Input
+            label="Label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="default"
+          />
+          <Input
+            label="Raw key (write-only)"
+            type="password"
+            value={rawKey}
+            onChange={(e) => setRawKey(e.target.value)}
+            placeholder="pcsk_..."
+          />
+          <Button
+            onClick={create}
+            disabled={!rawKey.trim() || !label.trim() || creating}
+            loading={creating}
+          >
+            Register
+          </Button>
+        </div>
+      </Card>
+
+      {loading && (
+        <div style={{ padding: spacing.xxl, display: 'flex', justifyContent: 'center' }}>
+          <Spinner />
+        </div>
+      )}
+
+      {err && !loading && <div style={errBox}>{err}</div>}
+
+      {!loading && !err && keys.length === 0 && (
+        <EmptyState
+          title="No infrastructure keys registered"
+          description="Register a Pinecone key (provider=pinecone, label=default) before creating Pinecone-backed namespaces."
         />
       )}
 

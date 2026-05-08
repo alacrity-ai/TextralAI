@@ -15,6 +15,7 @@ export type Prefix =
   | 'chunk' // indexed chunk (legacy; new chunks use chk_<ver>_<ord>)
   | 'ak' // textral api key
   | 'pkey' // registered provider key
+  | 'ikey' // registered infra key (vector-store credentials)
   | 'qev' // query event
   | 'req' // request id (per Worker invocation)
   | 'evset' // eval set (Phase 7)

@@ -14,6 +14,7 @@ import {
   softDeleteNamespace,
   updateNamespace,
 } from '../db/namespaces.js';
+import { resolveVectorBinding } from '../auth/infra-key-resolver.js';
 
 /** Map a known embedding profile name to its dimensionality. Used as
  *  a fallback at namespace-create time when the caller doesn't supply
@@ -231,12 +232,13 @@ namespacesRoute.openapi(createRouteDef, async (c) => {
   // (the bug surfaced during the Pinecone PE prep run — pre-fix the
   // row was inserted then the env-var-missing check fired afterward,
   // and a retry hit NAMESPACE_ALREADY_EXISTS).
-  const store = c.env.vectors.forBinding({
+  const binding = await resolveVectorBinding(c.env, tenantId, {
     backend: data.vector_backend,
     index_name: data.vector_index_name ?? null,
     embedding_dimensions: dimensions,
     namespace: vectorNamespace,
   });
+  const store = c.env.vectors.forBinding(binding);
   if (store.ensureBackingExists) {
     await store.ensureBackingExists();
   }

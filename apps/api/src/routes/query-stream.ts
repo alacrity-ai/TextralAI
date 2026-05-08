@@ -17,6 +17,7 @@ import type { Env, Variables } from '../types.js';
 import { getNamespaceBySlug } from '../db/namespaces.js';
 import { gateVersion } from '../retrieval/profile-gate.js';
 import { runHybridRetrieval } from '../retrieval/hybrid.js';
+import { resolveVectorBinding } from '../auth/infra-key-resolver.js';
 import { assembleContext } from '../retrieval/context-assembly.js';
 import { resolveCorpusProfile } from '../retrieval/profile-resolver.js';
 import { maybeRerank } from '../retrieval/rerank.js';
@@ -177,7 +178,13 @@ export async function runStreamingQuery(
   const queryVector = embedRes.value.vectors[0]!;
   const embeddingInputTokens = embedRes.value.usage.input_tokens;
 
-  // 4. Retrieval.
+  // 4. Retrieval. For Pinecone, resolve the tenant's infra key here.
+  const retrievalBinding = await resolveVectorBinding(c.env, tenantId, {
+    backend: ns.vector_backend,
+    index_name: ns.vector_index_name,
+    embedding_dimensions: body.embedding.dimensions ?? 1536,
+    namespace: ns.vector_namespace,
+  });
   const retrieval = await runHybridRetrieval(c.env, {
     query_vector: queryVector,
     query_text: body.query,
@@ -188,12 +195,7 @@ export async function runStreamingQuery(
     top_k_dense: body.retrieval.top_k_dense ?? 10,
     top_k_sparse: body.retrieval.top_k_sparse ?? 10,
     rrf_k: 60,
-    binding: {
-      backend: ns.vector_backend,
-      index_name: ns.vector_index_name,
-      embedding_dimensions: body.embedding.dimensions ?? 1536,
-      namespace: ns.vector_namespace,
-    },
+    binding: retrievalBinding,
   });
   if (retrieval.candidates.length === 0) {
     const audit = await finalizeFailure(

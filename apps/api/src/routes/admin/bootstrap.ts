@@ -19,6 +19,7 @@ import { insertApiKey } from '../../db/api-keys.js';
 import { BootstrapRequest, BootstrapResponse } from '../../openapi/components.js';
 import { Responses } from '../../openapi/registry.js';
 import { inferDimensionsFromProfile } from '../namespaces.js';
+import { resolveVectorBinding } from '../../auth/infra-key-resolver.js';
 import type { VectorBackend } from '../../retrieval/vector-store.js';
 
 export const bootstrapRoute = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
@@ -117,12 +118,13 @@ bootstrapRoute.openapi(bootstrap, async (c) => {
     // Vectorize backends (Qdrant collection / Pinecone index dims).
     // Mirrors the same call site in `routes/namespaces.ts`.
     if (backend !== 'vectorize') {
-      const store = c.env.vectors.forBinding({
+      const binding = await resolveVectorBinding(c.env, tenantId, {
         backend: ns.vector_backend,
         index_name: ns.vector_index_name,
         embedding_dimensions: dims,
         namespace: ns.vector_namespace,
       });
+      const store = c.env.vectors.forBinding(binding);
       if (store.ensureBackingExists) {
         await store.ensureBackingExists();
       }

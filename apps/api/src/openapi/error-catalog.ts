@@ -71,6 +71,21 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: '`provider_key_ref` (label) or `provider_key_id` does not match a registered key.',
     recovery: 'Register the key via `POST /v1/provider-keys`, or list with `GET /v1/provider-keys`.',
   },
+  INFRA_KEY_NOT_FOUND: {
+    http: 400,
+    when: 'A namespace operation needs the tenant\'s infra key (e.g. Pinecone) but no active key is registered.',
+    recovery: 'Register one with `POST /v1/infra-keys` (provider=pinecone, label=default).',
+  },
+  INFRA_KEY_ALREADY_REGISTERED: {
+    http: 409,
+    when: 'An active infra key already exists for this (tenant, provider). KISS rule: at most one active per backend.',
+    recovery: 'Revoke the existing one first (`DELETE /v1/infra-keys/{id}`), then re-register.',
+  },
+  INFRA_KEY_INVALID: {
+    http: 422,
+    when: 'A `POST /v1/infra-keys/{id}/test` reachability probe failed against the upstream (e.g. Pinecone returned 401/403).',
+    recovery: 'Verify the key on the provider\'s console; revoke + re-register if rotated.',
+  },
   PROVIDER_KEY_INVALID: {
     http: 422,
     when: 'Upstream rejected your BYOK key (revoked, malformed, wrong scope).',

@@ -2,6 +2,7 @@ export * from './id.js';
 export * from './error.js';
 export * from './namespace.js';
 export * from './provider-key.js';
+export * from './infra-key.js';
 export * from './provider.js';
 export * from './ingest.js';
 export * from './chunk.js';

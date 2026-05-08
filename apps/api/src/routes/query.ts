@@ -24,6 +24,7 @@ import { z } from '../openapi/z.js';
 import { getNamespaceBySlug } from '../db/namespaces.js';
 import { gateVersion } from '../retrieval/profile-gate.js';
 import { runHybridRetrieval } from '../retrieval/hybrid.js';
+import { resolveVectorBinding } from '../auth/infra-key-resolver.js';
 import { assembleContext } from '../retrieval/context-assembly.js';
 import { resolveCorpusProfile } from '../retrieval/profile-resolver.js';
 import { maybeRerank } from '../retrieval/rerank.js';
@@ -208,6 +209,13 @@ queryRoute.openapi(queryEndpoint, async (c) => {
     // 6. Hybrid retrieval. Use the merged profile's
     // retrieval_defaults.artifact_types (Phase 5) — the request body
     // can override and that override is already merged into `profile`.
+    // For Pinecone, resolve the tenant's infra key here.
+    const retrievalBinding = await resolveVectorBinding(c.env, tenantId, {
+      backend: ns.vector_backend,
+      index_name: ns.vector_index_name,
+      embedding_dimensions: body.embedding.dimensions ?? 1536,
+      namespace: ns.vector_namespace,
+    });
     const retrieval = await runHybridRetrieval(c.env, {
       query_vector: queryVec,
       query_text: body.query,
@@ -219,12 +227,7 @@ queryRoute.openapi(queryEndpoint, async (c) => {
       top_k_sparse: body.retrieval.top_k_sparse,
       rrf_k: body.retrieval.rrf_k,
       // V3 Phase 1 — picks the namespace's vector backend.
-      binding: {
-        backend: ns.vector_backend,
-        index_name: ns.vector_index_name,
-        embedding_dimensions: body.embedding.dimensions ?? 1536,
-        namespace: ns.vector_namespace,
-      },
+      binding: retrievalBinding,
     });
 
     await updateQueryEvent(c.env, qevId, {

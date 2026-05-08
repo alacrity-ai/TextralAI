@@ -27,6 +27,7 @@ import { meRoute } from './routes/me.js';
 import { namespacesRoute } from './routes/namespaces.js';
 import { apiKeysRoute } from './routes/api-keys.js';
 import { providerKeysRoute } from './routes/provider-keys.js';
+import { infraKeysRoute } from './routes/infra-keys.js';
 import { documentsRoute, documentRegisterRoute } from './routes/documents.js';
 import { ingestionJobsRoute } from './routes/ingestion-jobs.js';
 import { queryRoute } from './routes/query.js';
@@ -96,6 +97,7 @@ v1.route('/me', meRoute);
 v1.route('/namespaces', namespacesRoute);
 v1.route('/api-keys', apiKeysRoute);
 v1.route('/provider-keys', providerKeysRoute);
+v1.route('/infra-keys', infraKeysRoute);
 // Documents: register lives under the namespace tree
 // (`/v1/namespaces/{slug}/documents`); every `/{id}/...` op (get,
 // uploads, finalize, ingest) lives at `/v1/documents/{id}/...`. Two

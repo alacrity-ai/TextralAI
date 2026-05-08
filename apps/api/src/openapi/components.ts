@@ -11,6 +11,8 @@ import {
   NamespaceSlug as NamespaceSlugRaw,
   ProviderKey as ProviderKeyRaw,
   ProviderKeyCreate as ProviderKeyCreateRaw,
+  InfraKey as InfraKeyRaw,
+  InfraKeyCreate as InfraKeyCreateRaw,
   Document as DocumentRaw,
   DocumentCreate as DocumentCreateRaw,
   UploadCreate as UploadCreateRaw,
@@ -29,6 +31,8 @@ export const NamespaceCreateSchema = NamespaceCreateRaw.openapi('NamespaceCreate
 export const NamespaceUpdateSchema = NamespaceUpdateRaw.openapi('NamespaceUpdate');
 export const ProviderKeySchema = ProviderKeyRaw.openapi('ProviderKey');
 export const ProviderKeyCreateSchema = ProviderKeyCreateRaw.openapi('ProviderKeyCreate');
+export const InfraKeySchema = InfraKeyRaw.openapi('InfraKey');
+export const InfraKeyCreateSchema = InfraKeyCreateRaw.openapi('InfraKeyCreate');
 
 // Path parameter shapes. `.openapi({ param: ... })` is how
 // @hono/zod-openapi tags param descriptions / examples.
@@ -132,6 +136,18 @@ export const ApiKeyList = z.object({ data: z.array(ApiKeyMetadata) }).openapi('A
 export const ProviderKeyList = z
   .object({ data: z.array(ProviderKeySchema) })
   .openapi('ProviderKeyList');
+
+export const InfraKeyList = z
+  .object({ data: z.array(InfraKeySchema) })
+  .openapi('InfraKeyList');
+
+export const InfraKeyTestResponse = z
+  .object({
+    ok: z.boolean(),
+    error_code: z.string().optional(),
+    error_message: z.string().optional(),
+  })
+  .openapi('InfraKeyTestResponse');
 
 // ── Phase 3 ingestion shapes ─────────────────────────────────────────
 

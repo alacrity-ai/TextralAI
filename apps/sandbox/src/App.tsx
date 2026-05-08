@@ -4,6 +4,7 @@ import { ApiKeyGate } from './auth/ApiKeyGate.js';
 import { NamespaceProvider } from './context/NamespaceContext.js';
 import { ModelRegistryProvider } from './context/ModelRegistryContext.js';
 import { ProviderKeyRegistryProvider } from './context/ProviderKeyRegistryContext.js';
+import { InfraKeyRegistryProvider } from './context/InfraKeyRegistryContext.js';
 import { ActiveJobsProvider } from './context/ActiveJobsContext.js';
 import { IngestHistory } from './pages/IngestHistory.js';
 import { ToastProvider } from './context/ToastContext.js';
@@ -28,6 +29,7 @@ export function App() {
               <NamespaceProvider>
                 <ModelRegistryProvider>
                 <ProviderKeyRegistryProvider>
+                <InfraKeyRegistryProvider>
                 <ActiveJobsProvider>
                 <AppShell>
                   <Routes>
@@ -45,6 +47,7 @@ export function App() {
                   </Routes>
                 </AppShell>
                 </ActiveJobsProvider>
+                </InfraKeyRegistryProvider>
                 </ProviderKeyRegistryProvider>
                 </ModelRegistryProvider>
               </NamespaceProvider>

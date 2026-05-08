@@ -20,6 +20,10 @@ export const ErrorCode = z.enum([
   'PROVIDER_KEY_NOT_FOUND',
   'PROVIDER_KEY_INVALID',
   'PROVIDER_KEY_VALIDATION_FAILED',
+  // infra keys — tenant-scoped credentials for vector-store backends
+  'INFRA_KEY_NOT_FOUND',
+  'INFRA_KEY_ALREADY_REGISTERED',
+  'INFRA_KEY_INVALID',
   // provider abstraction (Phase 2)
   'PROVIDER_QUOTA_EXHAUSTED',
   'PROVIDER_RATE_LIMITED',

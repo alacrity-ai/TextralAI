@@ -26,6 +26,12 @@ export interface VectorBinding {
    *  Pinecone's default (unnamed) namespace.
    *  Qdrant / Vectorize: ignored (null). */
   namespace: string | null;
+  /** Tenant-resolved Pinecone API key. Pre-resolved at the call site
+   *  via `resolveInfraKey(env, tenantId, 'pinecone')` and passed in
+   *  rather than fetched inside the factory — keeps `vectorStoreFor`
+   *  synchronous. Required when `backend === 'pinecone'`; absent for
+   *  other backends. */
+  pineconeApiKey?: string;
 }
 
 export interface VectorMetadata {
@@ -109,11 +115,16 @@ export function vectorStoreFor(env: Env, binding: VectorBinding): VectorStore {
       });
     }
     case 'pinecone': {
-      if (!env.PINECONE_API_KEY) {
+      // Per-tenant credential. Caller resolves it via
+      // `resolveInfraKey(env, tenantId, 'pinecone')` and threads it
+      // into the binding before invoking the factory. The previous
+      // path read a `PINECONE_API_KEY` worker secret — replaced by
+      // tenant-scoped infra_keys (see migration 0011).
+      if (!binding.pineconeApiKey) {
         throw new TextralError(
-          'BAD_REQUEST',
+          'INFRA_KEY_NOT_FOUND',
           400,
-          'Pinecone backend selected but PINECONE_API_KEY is unset on this deploy',
+          'Pinecone backend requires a tenant-registered infra key. Register one via POST /v1/infra-keys (provider=pinecone).',
         );
       }
       if (!binding.index_name) {
@@ -125,7 +136,7 @@ export function vectorStoreFor(env: Env, binding: VectorBinding): VectorStore {
       }
       return new PineconeAdapter({
         host: binding.index_name,
-        apiKey: env.PINECONE_API_KEY,
+        apiKey: binding.pineconeApiKey,
         dimensions: binding.embedding_dimensions,
         // Empty string and null both mean "use Pinecone's default
         // unnamed namespace" — adapter reads `cfg.namespace` and

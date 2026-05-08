@@ -105,3 +105,11 @@ export function getSecretsStoreClient(env: Env): SecretsStoreClient {
 export function providerKeySecretName(tenantId: string, provider: string, label: string): string {
   return `pkey-${tenantId}-${provider}-${label}`;
 }
+
+/** Distinct prefix from `pkey-` so the two key kinds can never collide
+ *  in the underlying KV — even if a tenant registers a provider-key
+ *  with provider='pinecone' (which would be rejected upstream by the
+ *  ProviderName enum, but defense in depth costs nothing). */
+export function infraKeySecretName(tenantId: string, provider: string, label: string): string {
+  return `ikey-${tenantId}-${provider}-${label}`;
+}

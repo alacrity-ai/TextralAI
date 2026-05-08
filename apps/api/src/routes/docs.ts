@@ -42,6 +42,7 @@ const TAG_GROUPS = [
     name: 'Core integration',
     tags: [
       'Provider Keys',
+      'Infra Keys',
       'Namespaces',
       'Documents',
       'Chunks',

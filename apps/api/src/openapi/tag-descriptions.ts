@@ -52,10 +52,43 @@ too. Failed calls during the rotation window surface as
 
 > **Vector store ≠ provider key.** Vector backends (Vectorize,
 > Qdrant, Pinecone) are configured per-namespace at create time —
-> see the **Namespaces** tag. They are **not** provider keys; you
-> never register a Qdrant or Pinecone API key here. Operator-side
-> config (\`QDRANT_URL\`, \`PINECONE_API_KEY\`) lives in the deploy
-> environment.`,
+> see the **Namespaces** tag. Their tenant-scoped credentials live
+> on the parallel **Infra Keys** surface (\`/v1/infra-keys\`), not
+> here. Vectorize is account-bound and needs no key.`,
+
+  'Infra Keys': `Tenant-scoped credentials for vector-store
+backends. Sister to **Provider Keys** but distinct because the
+resolution semantics differ: at most **one active key per
+\`(tenant, provider)\`**, picked implicitly by the namespace's
+\`vector_backend\` (no \`provider_key_ref\` needed at lookup time).
+
+| Backend | Tenant key here | Why |
+|---------|-----------------|-----|
+| Vectorize | — | Cloudflare account binding; no per-tenant key |
+| Pinecone | ✓ | Each tenant brings their own Pinecone account |
+| Qdrant Cloud | future | Same shape; not yet enabled |
+
+Register with \`POST /v1/infra-keys\` (\`provider\`, \`label\`,
+\`key\`); the raw key is written to Cloudflare Secrets Store and
+never returned again. To rotate, **revoke the existing key first**
+(\`DELETE /v1/infra-keys/{id}\`), then register a replacement —
+duplicates fail with \`INFRA_KEY_ALREADY_REGISTERED\` (409).
+
+\`POST /v1/infra-keys/{id}/test\` issues a minimal upstream
+reachability probe (Pinecone: \`GET /indexes\`, key-only check
+that doesn't require an index URL) and updates
+\`last_validated_at\` + \`last_error_code\`.
+
+Once a key is registered, namespace operations on the matching
+backend resolve it automatically. Without one, the namespace
+create / ingest / query path returns \`INFRA_KEY_NOT_FOUND\` (400).
+
+> **Self-host migration note.** Pre-existing self-host deploys
+> read \`PINECONE_API_KEY\` from the Worker / container env. That
+> fallback is removed: every Pinecone-backed namespace now
+> requires a tenant-registered infra key. After upgrading,
+> register one via this surface (or the sandbox **Keys** tab)
+> before resuming Pinecone ingest/query.`,
 
   Namespaces: `A **namespace** is a retrieval scope inside a tenant.
 Pick one of the five shipped corpus profiles when you create it:

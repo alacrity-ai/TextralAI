@@ -81,11 +81,6 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: 'An active infra key already exists for this (tenant, provider). KISS rule: at most one active per backend.',
     recovery: 'Revoke the existing one first (`DELETE /v1/infra-keys/{id}`), then re-register.',
   },
-  INFRA_KEY_INVALID: {
-    http: 422,
-    when: 'A `POST /v1/infra-keys/{id}/test` reachability probe failed against the upstream (e.g. Pinecone returned 401/403).',
-    recovery: 'Verify the key on the provider\'s console; revoke + re-register if rotated.',
-  },
   PROVIDER_KEY_INVALID: {
     http: 422,
     when: 'Upstream rejected your BYOK key (revoked, malformed, wrong scope).',

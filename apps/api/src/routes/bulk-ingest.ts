@@ -428,12 +428,16 @@ bulkIngestRoute.openapi(getBulkJobRoute, async (c) => {
   const { id: bulkJobId } = c.req.valid('param');
   const job = await getBulkJob(c.env.db, tenantId, bulkJobId);
   if (!job) throw new TextralError('BULK_JOB_NOT_FOUND', 404, 'Bulk job not found');
-  // If auto_finalize and all files have arrived, opportunistically
-  // run the finalize loop on this read.
+  // Reconcile the denormalized counters first so the auto-finalize
+  // check below sees fresh `files_uploaded`. Without this, the first
+  // poll after the last PUT would see stale 0 and skip finalize,
+  // pushing actual ingestion start to the second poll cycle.
+  await rollupBulkJob(c.env, job);
+  const afterRollup = (await getBulkJob(c.env.db, tenantId, bulkJobId))!;
   if (
-    job.auto_finalize &&
-    job.state === 'uploading' &&
-    job.files_uploaded >= job.total_files
+    afterRollup.auto_finalize &&
+    afterRollup.state === 'uploading' &&
+    afterRollup.files_uploaded >= afterRollup.total_files
   ) {
     await runBulkFinalizeLoop(c.env, tenantId, bulkJobId);
   }

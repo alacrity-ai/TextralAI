@@ -33,6 +33,7 @@ import { ingestionJobsRoute } from './routes/ingestion-jobs.js';
 import { queryRoute } from './routes/query.js';
 import { queryEventsRoute } from './routes/query-events.js';
 import { chunksRoute } from './routes/chunks.js';
+import { authRoute } from './routes/auth.js';
 import { bootstrapRoute } from './routes/admin/bootstrap.js';
 import { adminIngestionJobsRoute } from './routes/admin/ingestion-jobs.js';
 import { adminEnrichmentRunsRoute } from './routes/admin/enrichment-runs.js';
@@ -85,6 +86,11 @@ app.route('/__redaction_check', redactionCheckRoute);
 // where INTERNAL_HMAC_SECRET is unset.
 app.route('/internal', internalRoute);
 app.route('/internal/providers', internalProvidersRoute);
+
+// /v1/auth/* — self-service tenant registration + key recovery. PUBLIC.
+// Mounted before the requireApiKey middleware so anyone with a valid
+// email can mint a tenant. See docs/TENANT_REGISTRATION_DESIGN.md.
+app.route('/v1/auth', authRoute);
 
 // /v1/admin/* — gated by ADMIN_BOOTSTRAP_TOKEN, NOT by X-Textral-Api-Key.
 // Mounted before the requireApiKey middleware so it bypasses it.

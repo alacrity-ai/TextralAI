@@ -22,6 +22,11 @@ import {
   IngestionJob as IngestionJobRaw,
   StageAttempt as StageAttemptRaw,
   Chunk as ChunkRaw,
+  RegisterRequest as RegisterRequestRaw,
+  RecoverRequest as RecoverRequestRaw,
+  RedeemRequest as RedeemRequestRaw,
+  AuthOkResponse as AuthOkResponseRaw,
+  RedeemResponse as RedeemResponseRaw,
 } from '@textral/contracts';
 import { z } from './z.js';
 
@@ -103,6 +108,14 @@ export const ProviderKeyTestResponse = z
     error_message: z.string().optional(),
   })
   .openapi('ProviderKeyTestResponse');
+
+// ── Phase B — self-service tenant registration ──────────────────────
+
+export const RegisterRequestSchema = RegisterRequestRaw.openapi('RegisterRequest');
+export const RecoverRequestSchema = RecoverRequestRaw.openapi('RecoverRequest');
+export const RedeemRequestSchema = RedeemRequestRaw.openapi('RedeemRequest');
+export const AuthOkResponseSchema = AuthOkResponseRaw.openapi('AuthOkResponse');
+export const RedeemResponseSchema = RedeemResponseRaw.openapi('RedeemResponse');
 
 export const BootstrapRequest = z
   .object({

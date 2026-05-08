@@ -15,6 +15,51 @@ is the source of truth for SDK generators and client tooling.
 This section also lists dev-only debug endpoints — these 404 in
 production deploys.`,
 
+  Auth: `**Self-service tenant registration and API-key recovery.**
+Anyone with an email address can mint a Textral tenant against the
+Cloudflare deployment without operator involvement.
+
+Two flows, three endpoints, one shared redeem step:
+
+| Step | Register | Recover |
+|------|----------|---------|
+| 1. POST | \`/v1/auth/register\` (email + display_name) | \`/v1/auth/recover\` (email) |
+| 2. Email | "Confirm your Textral tenant" | "Recover your Textral API key" |
+| 3. Click | \`/v1/auth/redeem\` (token) → tenant + namespace + first key | \`/v1/auth/redeem\` (token) → fresh API key |
+
+The two issuing endpoints **always** return \`202 {ok:true}\` once the
+body validates — they never reveal whether the email is known to
+the system. The only informative failures live on \`/v1/auth/redeem\`:
+\`410 TOKEN_EXPIRED\` (stale link or no match) and \`410 TOKEN_ALREADY_USED\`
+(the second click on a single-use token).
+
+> **The raw API key is shown exactly once** — in the redeem response
+> body — and never re-emitted. Lose it and you re-trigger \`recover\`.
+
+**Token mechanics.** 32 bytes of WebCrypto entropy, base64url-encoded
+in the email URL, SHA-256-hashed at rest. 1-hour TTL. Single-use,
+enforced atomically (\`UPDATE ... WHERE consumed_at IS NULL\`). A new
+register/recover request supersedes any prior unconsumed token for
+the same \`(email, purpose)\`, so old links 410 instead of competing
+with the new one.
+
+**Rate limits.** 5 register / minute / IP, 3 recover / minute / IP.
+Exceeding returns \`429 RATE_LIMITED\`. The IP is stored as
+\`sha256(salt + ip)\` only — raw IPs are never persisted.
+
+**Operator gates.** \`MAILGUN_API_KEY\`, \`MAILGUN_DOMAIN\`, and
+\`TEXTRAL_PUBLIC_BASE\` must all be set for production deploys. If any
+is missing on \`ENV='prod'\`, both register and recover return
+\`503 TENANT_REGISTRATION_DISABLED\` instead of silently issuing
+unclickable links. Self-host without Mailgun: use
+\`/v1/admin/bootstrap\` to mint tenants instead — that path stays
+fully supported.
+
+**Vector backend.** New tenants land with a default namespace
+backed by Vectorize on the Cloudflare runtime, Qdrant on self-host —
+mirrors \`POST /v1/admin/bootstrap\`. Switch to Pinecone via the
+**Infra Keys** + **Namespaces** surfaces afterwards.`,
+
   // ── Core integration ───────────────────────────────────────────────
   'Provider Keys': `Bring-your-own-key (BYOK) registration for upstream
 LLM, embedding, and reranker providers. Supported providers:

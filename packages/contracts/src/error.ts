@@ -75,6 +75,13 @@ export const ErrorCode = z.enum([
   'EVAL_RUN_NOT_FOUND',
   'EVAL_RUN_FAILED',
   'EVAL_JUDGE_FAILED',
+  // self-service tenant registration (Phase B — TENANT_REGISTRATION).
+  // Email shape failures fall through to BAD_REQUEST via the global
+  // Zod hook — there's no separate INVALID_EMAIL code.
+  'TOKEN_EXPIRED',
+  'TOKEN_ALREADY_USED',
+  'TENANT_REGISTRATION_DISABLED',
+  'RATE_LIMITED',
   // not implemented (used by Phase 1.5 stubs that light up in Phase 2)
   'NOT_IMPLEMENTED',
 ]);

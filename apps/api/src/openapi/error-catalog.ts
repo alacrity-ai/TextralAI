@@ -286,6 +286,26 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: 'Phase-stub endpoint not yet wired.',
     recovery: 'Should not appear in MVP.',
   },
+  TOKEN_EXPIRED: {
+    http: 410,
+    when: '`/v1/auth/redeem` called with a token whose `expires_at` is in the past, or no row matches the supplied token at all (stale-link / typo / supersession).',
+    recovery: 'Request a fresh email via `/v1/auth/register` (new tenants) or `/v1/auth/recover` (existing tenants). Tokens live 1 hour.',
+  },
+  TOKEN_ALREADY_USED: {
+    http: 410,
+    when: '`/v1/auth/redeem` called twice with the same token. The first call already minted the API key; the second loses the atomic single-use race.',
+    recovery: 'The previous call returned the raw API key — that key is the only artifact. If lost, request a recovery email via `/v1/auth/recover`.',
+  },
+  TENANT_REGISTRATION_DISABLED: {
+    http: 503,
+    when: '`MAILGUN_API_KEY` / `MAILGUN_DOMAIN` / `TEXTRAL_PUBLIC_BASE` are unset on a `prod` deploy. The route can\'t deliver a usable confirmation email.',
+    recovery: 'Operator: set the three Worker secrets/vars (see `docs/runbooks/DEPLOY.md`). For self-host without Mailgun, mint tenants via `/v1/admin/bootstrap` instead.',
+  },
+  RATE_LIMITED: {
+    http: 429,
+    when: 'Public auth endpoint (`/v1/auth/register` or `/v1/auth/recover`) exceeded the per-IP per-minute cap.',
+    recovery: 'Wait one minute and retry; the limit is intentionally tight (5/min for register, 3/min for recover).',
+  },
 };
 
 /** Render the catalog as an HTML table for embedding in

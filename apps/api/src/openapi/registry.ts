@@ -51,4 +51,9 @@ export const Responses = {
       'Resource existed but the requested artifact is no longer available (e.g., mirrored answer reaped or never written).',
     content: errorContent,
   },
+  serviceUnavailable: {
+    description:
+      'Operator-side configuration prevents the request from being served (e.g. Mailgun unconfigured in prod).',
+    content: errorContent,
+  },
 } as const;

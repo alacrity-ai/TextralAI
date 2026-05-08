@@ -1,5 +1,6 @@
 export * from './id.js';
 export * from './error.js';
+export * from './auth.js';
 export * from './namespace.js';
 export * from './provider-key.js';
 export * from './infra-key.js';

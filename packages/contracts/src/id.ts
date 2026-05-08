@@ -22,6 +22,7 @@ export type Prefix =
   | 'evq' // eval question (Phase 7)
   | 'evrun' // eval run (Phase 7)
   | 'evres' // eval result (Phase 7)
+  | 'evf' // email verification token row (Phase B — TENANT_REGISTRATION)
   | 'mcp'; // mcp tool call audit row
 
 /** Generate a prefixed ULID, e.g. `doc_01HZ8YQ8P...`. */

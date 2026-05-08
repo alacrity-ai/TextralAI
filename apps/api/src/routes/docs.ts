@@ -37,7 +37,7 @@ const DEFAULT_CONFIG: DocsConfig = {
 // Tag groups, in sidebar order. Tag names must match the strings used
 // in routes' `tags: [...]` arrays.
 const TAG_GROUPS = [
-  { name: 'Get started', tags: ['Meta'] },
+  { name: 'Get started', tags: ['Meta', 'Auth'] },
   {
     name: 'Core integration',
     tags: [

@@ -16,6 +16,7 @@ import { Spinner } from '../components/ui/Spinner.js';
 import { SourcePanel } from '../components/SourcePanel.js';
 import { IngestStreamLog } from '../components/IngestStreamLog.js';
 import { useToast } from '../context/ToastContext.js';
+import { useActiveJobs } from '../context/ActiveJobsContext.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 
 type Tab = 'chunks' | 'metadata' | 'reingest';
@@ -32,6 +33,7 @@ export function DocumentInspector() {
   const navigate = useNavigate();
   const { active } = useNamespace();
   const { showToast } = useToast();
+  const activeJobs = useActiveJobs();
 
   const [docId, setDocId] = useState(paramId ?? '');
   const [doc, setDoc] = useState<Document | null>(null);
@@ -136,6 +138,7 @@ export function DocumentInspector() {
         force_rebuild: true,
       });
       setReingestJob(r.job_id);
+      activeJobs.startTracking(r.job_id);
       showToast(`Reingest job started: ${r.job_id}`, 'success');
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
@@ -347,11 +350,38 @@ export function DocumentInspector() {
               <Button onClick={reingest} disabled={reingestBusy} loading={reingestBusy}>
                 Re-ingest
               </Button>
-              {reingestJob && (
-                <div style={{ marginTop: spacing.lg }}>
-                  <IngestStreamLog jobId={reingestJob} />
-                </div>
-              )}
+              {reingestJob && (() => {
+                const tracked = activeJobs.jobs.find((j) => j.job.id === reingestJob);
+                if (!tracked) return null;
+                const cancelable =
+                  tracked.terminalAt === null && tracked.job.status !== 'completed';
+                return (
+                  <div style={{ marginTop: spacing.lg }}>
+                    <IngestStreamLog
+                      job={tracked.job}
+                      stages={tracked.stages}
+                      startedAt={tracked.job.created_at}
+                      pollError={tracked.pollError}
+                      {...(cancelable
+                        ? {
+                            onCancel: async () => {
+                              try {
+                                await activeJobs.cancelJob(reingestJob);
+                                showToast(`Cancelling ${reingestJob}`, 'info');
+                              } catch (e) {
+                                const msg =
+                                  e instanceof TextralApiError
+                                    ? `${e.code}: ${e.message}`
+                                    : (e as Error).message;
+                                showToast(`Cancel failed: ${msg}`, 'error');
+                              }
+                            },
+                          }
+                        : {})}
+                    />
+                  </div>
+                );
+              })()}
             </Card>
           )}
         </>

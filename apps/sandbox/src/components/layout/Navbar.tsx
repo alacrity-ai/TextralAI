@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { colors, fonts } from '../../styles/tokens.js';
 import { useApiKey } from '../../auth/ApiKeyContext.js';
+import { useActiveJobs } from '../../context/ActiveJobsContext.js';
 import { NamespacePicker } from '../NamespacePicker.js';
 import { apiUrl } from '../../api/client.js';
 
@@ -19,7 +20,13 @@ const NAV_LINKS: Array<{ to: string; label: string }> = [
 export function Navbar() {
   const location = useLocation();
   const { setKey } = useApiKey();
+  const activeJobs = useActiveJobs();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Count only non-terminal jobs for the badge — once a job hits
+  // completed/failed (incl. cancelled) it's no longer "active" even if
+  // it's still in the grace-window list.
+  const ingestBadgeCount = activeJobs.jobs.filter((j) => j.terminalAt === null).length;
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
@@ -100,7 +107,15 @@ export function Navbar() {
         </Link>
 
         {NAV_LINKS.map((link) => (
-          <NavLink key={link.to} to={link.to} label={link.label} active={isActive(link.to)} />
+          <NavLink
+            key={link.to}
+            to={link.to}
+            label={link.label}
+            active={isActive(link.to)}
+            {...(link.to === '/ingest' && ingestBadgeCount > 0
+              ? { badge: ingestBadgeCount }
+              : {})}
+          />
         ))}
       </div>
 
@@ -199,13 +214,25 @@ function MenuItem({
   );
 }
 
-function NavLink({ to, label, active }: { to: string; label: string; active: boolean }) {
+function NavLink({
+  to,
+  label,
+  active,
+  badge,
+}: {
+  to: string;
+  label: string;
+  active: boolean;
+  badge?: number;
+}) {
   return (
     <Link to={to} style={{ textDecoration: 'none', padding: '4px 0', cursor: 'pointer' }}>
       <span
         style={{
           position: 'relative',
-          display: 'inline-block',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
           fontSize: 11,
           fontWeight: 500,
           letterSpacing: '0.18em',
@@ -216,6 +243,28 @@ function NavLink({ to, label, active }: { to: string; label: string; active: boo
         }}
       >
         {label}
+        {badge !== undefined && badge > 0 && (
+          <span
+            aria-label={`${badge} active job${badge === 1 ? '' : 's'}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 16,
+              height: 16,
+              padding: '0 5px',
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              background: colors.primary,
+              color: colors.bgBase,
+              borderRadius: 999,
+              animation: 'pulse-gold 1.4s ease-in-out infinite',
+            }}
+          >
+            {badge}
+          </span>
+        )}
         <span
           aria-hidden
           style={{

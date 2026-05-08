@@ -74,6 +74,22 @@ async def run_job(job_id: str, attempt: int) -> dict[str, Any]:
 
         for stage_index in range(start_index, len(STAGES)):
             stage = STAGES[stage_index]
+            # Cooperative cancellation check at the stage boundary. The
+            # cancel route flips status='failed' + error_code='USER_CANCELLED';
+            # we poll job state at every stage start. Mid-stage work is
+            # not preempted (no signal handling), so the current stage
+            # continues to its natural end before this fires — but at
+            # most ~one stage worth of wasted work.
+            cancel_check = await worker.get_json(f"/internal/jobs/{job_id}")
+            if (
+                cancel_check["job"].get("status") == "failed"
+                and cancel_check["job"].get("error_code") == "USER_CANCELLED"
+            ):
+                return {
+                    "outcome": "cancelled",
+                    "job_id": job_id,
+                    "stage": stage,
+                }
             attempt_number = _next_attempt_for(attempts, stage)
             await _record_attempt_start(worker, job_id, stage, attempt_number)
             started_at = time.time() * 1000.0

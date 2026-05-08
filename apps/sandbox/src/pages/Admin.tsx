@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge.js';
 import { Spinner } from '../components/ui/Spinner.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { IngestStreamLog } from '../components/IngestStreamLog.js';
+import { useActiveJobs } from '../context/ActiveJobsContext.js';
 import { useToast } from '../context/ToastContext.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 
@@ -248,6 +249,7 @@ function JobsTab() {
   const [loading, setLoading] = useState(true);
   const [retryJobId, setRetryJobId] = useState<string | null>(null);
   const { showToast } = useToast();
+  const activeJobs = useActiveJobs();
 
   async function refresh() {
     setLoading(true);
@@ -275,6 +277,7 @@ function JobsTab() {
       await api('POST', `/v1/ingestion-jobs/${jobId}/retry`);
       showToast(`Retry enqueued for ${jobId}`, 'success');
       setRetryJobId(jobId);
+      activeJobs.startTracking(jobId);
       void refresh();
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
@@ -389,14 +392,40 @@ function JobsTab() {
         </div>
       )}
 
-      {retryJobId && (
-        <div style={{ marginTop: spacing.lg }}>
-          <div style={sectionLabel}>Retry stream — {retryJobId}</div>
-          <div style={{ marginTop: spacing.sm }}>
-            <IngestStreamLog jobId={retryJobId} />
+      {retryJobId && (() => {
+        const tracked = activeJobs.jobs.find((j) => j.job.id === retryJobId);
+        if (!tracked) return null;
+        const cancelable = tracked.terminalAt === null;
+        return (
+          <div style={{ marginTop: spacing.lg }}>
+            <div style={sectionLabel}>Retry stream — {retryJobId}</div>
+            <div style={{ marginTop: spacing.sm }}>
+              <IngestStreamLog
+                job={tracked.job}
+                stages={tracked.stages}
+                startedAt={tracked.job.created_at}
+                pollError={tracked.pollError}
+                {...(cancelable
+                  ? {
+                      onCancel: async () => {
+                        try {
+                          await activeJobs.cancelJob(retryJobId);
+                          showToast(`Cancelling ${retryJobId}`, 'info');
+                        } catch (e) {
+                          const msg =
+                            e instanceof TextralApiError
+                              ? `${e.code}: ${e.message}`
+                              : (e as Error).message;
+                          showToast(`Cancel failed: ${msg}`, 'error');
+                        }
+                      },
+                    }
+                  : {})}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }

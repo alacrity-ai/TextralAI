@@ -247,6 +247,18 @@ async function summarizeJobOutcome(env: Env, job: IngestionJobRow): Promise<Outc
 internalRoute.post('/jobs/:id/stage-attempt', async (c) => {
   const id = c.req.param('id');
   const job = await loadJobOrThrow(c.env, id);
+  // Defense in depth: even if the runner missed the cancellation check
+  // at the top of its stage loop, we refuse to record more progress
+  // against a cancelled job. The runner's WorkerError handler treats
+  // 409s as fatal-for-this-stage; the queue won't re-deliver because
+  // status is already terminal.
+  if (job.status === 'failed' && job.error_code === 'USER_CANCELLED') {
+    throw new TextralError(
+      'JOB_CANCELLED',
+      409,
+      'Cannot record stage progress: job was cancelled by user',
+    );
+  }
   const body = (await c.req.json()) as {
     stage: string;
     attempt: number;

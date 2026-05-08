@@ -37,6 +37,8 @@ export const ErrorCode = z.enum([
   'INDEX_ALREADY_BUILT',
   'INGESTION_IN_PROGRESS',
   'INGESTION_FAILED',
+  'JOB_NOT_RUNNING',
+  'JOB_CANCELLED',
   'UNSUPPORTED_CHUNK_JSONL_SCHEMA',
   // retrieval / synthesis (Phase 4)
   'EMBEDDING_PROFILE_MISMATCH',

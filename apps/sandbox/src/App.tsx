@@ -4,6 +4,8 @@ import { ApiKeyGate } from './auth/ApiKeyGate.js';
 import { NamespaceProvider } from './context/NamespaceContext.js';
 import { ModelRegistryProvider } from './context/ModelRegistryContext.js';
 import { ProviderKeyRegistryProvider } from './context/ProviderKeyRegistryContext.js';
+import { ActiveJobsProvider } from './context/ActiveJobsContext.js';
+import { IngestHistory } from './pages/IngestHistory.js';
 import { ToastProvider } from './context/ToastContext.js';
 import { ConfirmProvider } from './context/ConfirmContext.js';
 import { AppShell } from './components/layout/AppShell.js';
@@ -26,11 +28,13 @@ export function App() {
               <NamespaceProvider>
                 <ModelRegistryProvider>
                 <ProviderKeyRegistryProvider>
+                <ActiveJobsProvider>
                 <AppShell>
                   <Routes>
                     <Route path="/" element={<QueryBench />} />
                     <Route path="/history" element={<QueryHistory />} />
                     <Route path="/ingest" element={<Ingest />} />
+                    <Route path="/ingest/history" element={<IngestHistory />} />
                     <Route path="/compare" element={<Compare />} />
                     <Route path="/namespaces" element={<NamespaceList />} />
                     <Route path="/documents" element={<DocumentInspector />} />
@@ -40,6 +44,7 @@ export function App() {
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </AppShell>
+                </ActiveJobsProvider>
                 </ProviderKeyRegistryProvider>
                 </ModelRegistryProvider>
               </NamespaceProvider>

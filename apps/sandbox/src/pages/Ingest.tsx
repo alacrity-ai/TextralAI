@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useNamespace } from '../context/NamespaceContext.js';
 import { useModelRegistry } from '../context/ModelRegistryContext.js';
+import { useActiveJobs } from '../context/ActiveJobsContext.js';
 import { api, apiRaw, TextralApiError } from '../api/client.js';
 import type {
   Document,
@@ -63,13 +65,34 @@ export function Ingest() {
   const { active } = useNamespace();
   const { showToast } = useToast();
   const registry = useModelRegistry();
+  const activeJobs = useActiveJobs();
   const [file, setFile] = useState<File | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULTS);
-  const [busy, setBusy] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState(false);
+  // Track the job id this page-session most recently dispatched. The
+  // Reset/Ingest buttons stay locked while this specific job is still
+  // in flight; dismissing the job (or it reaching terminal + grace
+  // window) clears the lock. Different docs can still be ingested in
+  // parallel — open another tab or use the History page.
+  const [pageSessionJobId, setPageSessionJobId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sessionJob = useMemo(
+    () =>
+      pageSessionJobId
+        ? activeJobs.jobs.find((j) => j.job.id === pageSessionJobId) ?? null
+        : null,
+    [activeJobs.jobs, pageSessionJobId],
+  );
+  // Locked while we're dispatching, OR while a freshly-dispatched job
+  // is still in flight on the server. Once the job lands in a terminal
+  // state the buttons re-enable (Reset clears the form + the session
+  // pointer; Ingest is then free to fire again with new params).
+  const sessionJobInFlight =
+    sessionJob !== null && sessionJob.terminalAt === null;
+  const busy = dispatching || sessionJobInFlight;
 
   // The active namespace's `embedding_dimensions` is the hard-locked
   // dim every ingest into it must use. Sync the form whenever the
@@ -101,9 +124,9 @@ export function Ingest() {
       setErr('Pick a file first.');
       return;
     }
-    setBusy(true);
+    setDispatching(true);
     setErr(null);
-    setJobId(null);
+    setPageSessionJobId(null);
     try {
       // 1. Register the document.
       const doc = await api<Document>('POST', `/v1/namespaces/${active.slug}/documents`, {
@@ -154,14 +177,26 @@ export function Ingest() {
         mode: form.mode,
       });
 
-      setJobId(ing.job_id);
+      setPageSessionJobId(ing.job_id);
+      activeJobs.startTracking(ing.job_id);
       showToast(`Ingestion started: ${ing.job_id}`, 'success');
     } catch (e) {
       const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
       setErr(msg);
       showToast(`Ingest failed: ${msg}`, 'error');
     } finally {
-      setBusy(false);
+      setDispatching(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!pageSessionJobId) return;
+    try {
+      await activeJobs.cancelJob(pageSessionJobId);
+      showToast(`Cancelling ${pageSessionJobId}`, 'info');
+    } catch (e) {
+      const msg = e instanceof TextralApiError ? `${e.code}: ${e.message}` : (e as Error).message;
+      showToast(`Cancel failed: ${msg}`, 'error');
     }
   }
 
@@ -389,7 +424,13 @@ export function Ingest() {
           onClick={() => {
             setFile(null);
             setForm(DEFAULTS);
-            setJobId(null);
+            // Drop the just-dispatched job from this page's session
+            // pointer; the global tracker keeps polling so /ingest/history
+            // still picks it up.
+            if (pageSessionJobId && sessionJob?.terminalAt) {
+              activeJobs.dismissJob(pageSessionJobId);
+            }
+            setPageSessionJobId(null);
             setErr(null);
           }}
           disabled={busy}
@@ -401,12 +442,38 @@ export function Ingest() {
         </Button>
       </div>
 
-      {jobId && (
+      {sessionJob && (
         <div style={{ marginTop: spacing.xl }}>
-          <SectionLabel>Job stream</SectionLabel>
-          <div style={{ marginTop: spacing.sm }}>
-            <IngestStreamLog jobId={jobId} />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              marginBottom: spacing.sm,
+            }}
+          >
+            <SectionLabel>Job stream</SectionLabel>
+            <Link
+              to="/ingest/history"
+              style={{
+                fontSize: 11,
+                color: colors.textMuted,
+                textDecoration: 'none',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              View all jobs →
+            </Link>
           </div>
+          <IngestStreamLog
+            job={sessionJob.job}
+            stages={sessionJob.stages}
+            startedAt={sessionJob.job.created_at}
+            pollError={sessionJob.pollError}
+            {...(sessionJobInFlight ? { onCancel: handleCancel } : {})}
+          />
         </div>
       )}
     </div>

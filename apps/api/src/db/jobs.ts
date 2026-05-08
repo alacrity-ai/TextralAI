@@ -191,6 +191,91 @@ export async function listDeadLetteredJobs(
   return { items, next_cursor };
 }
 
+/** User-initiated cancel. Atomic CAS: only fires when the job is in
+ *  a non-terminal state (pending/running/retrying). Terminal jobs
+ *  (completed/failed) are immutable — caller surfaces 409. Records
+ *  the cancellation as a `failed` status with `error_code='USER_CANCELLED'`
+ *  so existing UI badges and DLQ logic keep working unchanged. */
+export async function cancelJob(
+  db: Db,
+  tenant_id: string,
+  job_id: string,
+): Promise<IngestionJobRow | null> {
+  const now = Date.now();
+  const r = await db.exec(
+    `UPDATE ingestion_jobs
+        SET status = 'failed',
+            error_code = 'USER_CANCELLED',
+            error_message = 'Cancelled by user',
+            completed_at = ?
+      WHERE id = ? AND tenant_id = ?
+        AND status IN ('pending', 'running', 'retrying')`,
+    [now, job_id, tenant_id],
+  );
+  if (r.rowsAffected === 0) return null;
+  // Mark any in-flight stage attempt as `skipped` so the UI doesn't
+  // keep pulsing on a stage the runner is about to abandon.
+  await db.exec(
+    `UPDATE ingest_stage_attempts
+        SET status = 'skipped',
+            completed_at = ?,
+            error_code = 'USER_CANCELLED',
+            error_message = 'Cancelled by user'
+      WHERE job_id = ? AND status = 'started'`,
+    [now, job_id],
+  );
+  return await getJobById(db, tenant_id, job_id);
+}
+
+interface ListJobsOpts {
+  status?: string[];
+  namespace_id?: string;
+  document_id?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export async function listJobsForTenant(
+  db: Db,
+  tenant_id: string,
+  opts: ListJobsOpts = {},
+): Promise<{ items: IngestionJobRow[]; next_cursor: string | null }> {
+  const limit = Math.min(Math.max(opts.limit ?? 25, 1), 100);
+  const cursorTs = opts.cursor ? Number(opts.cursor) : null;
+  const where: string[] = ['tenant_id = ?'];
+  const params: (string | number)[] = [tenant_id];
+  if (opts.status && opts.status.length > 0) {
+    const placeholders = opts.status.map(() => '?').join(',');
+    where.push(`status IN (${placeholders})`);
+    params.push(...opts.status);
+  }
+  if (opts.document_id) {
+    where.push('document_id = ?');
+    params.push(opts.document_id);
+  }
+  if (opts.namespace_id) {
+    // Resolved server-side from namespace_slug → namespace_id; documents
+    // join here is the cheapest filter (no FK index on
+    // ingestion_jobs.namespace_id since it isn't denormalized).
+    where.push('document_id IN (SELECT id FROM documents WHERE namespace_id = ?)');
+    params.push(opts.namespace_id);
+  }
+  if (cursorTs !== null) {
+    where.push('created_at < ?');
+    params.push(cursorTs);
+  }
+  params.push(limit + 1);
+  const rows = await db.all<IngestionJobRow>(
+    `SELECT * FROM ingestion_jobs WHERE ${where.join(' AND ')}
+        ORDER BY created_at DESC LIMIT ?`,
+    params,
+  );
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const next_cursor = hasMore ? String(items[items.length - 1]!.created_at) : null;
+  return { items, next_cursor };
+}
+
 export async function clearDeadLetterAndReset(
   db: Db,
   tenant_id: string,

@@ -56,6 +56,16 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: "Ingest requested an embedding dim different from the namespace's locked `embedding_dimensions`.",
     recovery: "Embed at the namespace's locked dim, or create a new namespace with the dim you need (locked at create time, immutable).",
   },
+  JOB_NOT_RUNNING: {
+    http: 409,
+    when: 'Cancel was attempted on a job that is already in a terminal state (completed/failed/cancelled).',
+    recovery: 'No action needed — the job is no longer running. Inspect via `GET /v1/ingestion-jobs/{id}`.',
+  },
+  JOB_CANCELLED: {
+    http: 409,
+    when: 'A stage-attempt write was attempted against a job that the user already cancelled. The runner exits cleanly on the next stage boundary.',
+    recovery: 'No action needed — the cancellation is taking effect.',
+  },
   PROVIDER_KEY_NOT_FOUND: {
     http: 404,
     when: '`provider_key_ref` (label) or `provider_key_id` does not match a registered key.',

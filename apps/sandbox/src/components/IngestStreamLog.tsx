@@ -1,6 +1,9 @@
+// Presentational stream-log for an ingestion job. Polling lives in
+// ActiveJobsContext; this component just renders whatever shape it's
+// handed and surfaces a Cancel button when the job is still running.
+
 import { useEffect, useState } from 'react';
 import type { IngestionJob, StageAttempt } from '../api/types.js';
-import { api, TextralApiError } from '../api/client.js';
 import { Badge } from './ui/Badge.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 
@@ -15,87 +18,79 @@ const STAGE_ORDER = [
 ];
 
 interface Props {
-  jobId: string;
-  onComplete?: (job: IngestionJob) => void;
+  job: IngestionJob;
+  stages: StageAttempt[];
+  /** Wall-clock ms since the user started this job (for the timer
+   *  pill). Optional — if omitted we time from the first render of
+   *  this row. The Ingest page passes elapsed since dispatch; the
+   *  History page omits and we time-since-mount instead. */
+  startedAt?: number;
+  /** Surfaced when the poller hits an error talking to /ingestion-jobs. */
+  pollError?: string | null;
+  /** Called when the user clicks Cancel. Hidden if not provided
+   *  (e.g. on the History page for a long-since-completed job). */
+  onCancel?: () => void;
 }
 
-export function IngestStreamLog({ jobId, onComplete }: Props) {
-  const [job, setJob] = useState<IngestionJob | null>(null);
-  const [stages, setStages] = useState<StageAttempt[]>([]);
-  const [err, setErr] = useState<string | null>(null);
+export function IngestStreamLog({ job, stages, startedAt, pollError, onCancel }: Props) {
   const [elapsed, setElapsed] = useState(0);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    const start = Date.now();
-    const elapsedTimer = window.setInterval(() => setElapsed(Date.now() - start), 250);
-
-    let stopped = false;
-    let calledComplete = false;
-    async function tick() {
-      while (!stopped) {
-        try {
-          const [j, sRes] = await Promise.all([
-            api<IngestionJob>('GET', `/v1/ingestion-jobs/${jobId}`),
-            api<{ data: StageAttempt[] }>('GET', `/v1/ingestion-jobs/${jobId}/logs`).catch(() => ({
-              data: [] as StageAttempt[],
-            })),
-          ]);
-          if (stopped) return;
-          setJob(j);
-          setStages(sRes.data ?? []);
-          if (j.status === 'completed' || j.status === 'failed') {
-            if (!calledComplete) {
-              calledComplete = true;
-              onComplete?.(j);
-            }
-            break;
-          }
-        } catch (e) {
-          if (stopped) return;
-          if (e instanceof TextralApiError) setErr(`${e.code}: ${e.message}`);
-          else setErr((e as Error).message);
-          break;
-        }
-        await new Promise((rs) => setTimeout(rs, 1500));
-      }
-    }
-    void tick();
-    return () => {
-      stopped = true;
-      window.clearInterval(elapsedTimer);
-    };
-  }, [jobId, onComplete]);
-
-  if (err) {
-    return (
-      <div style={{ ...wrapperStyle, borderColor: colors.danger }}>
-        <div style={{ color: colors.danger, fontSize: 13 }}>{err}</div>
-      </div>
-    );
-  }
-  if (!job) {
-    return (
-      <div style={wrapperStyle}>
-        <div style={{ color: colors.textMuted, fontSize: 13 }}>
-          Starting <code style={codeStyle}>{jobId}</code>…
-        </div>
-      </div>
-    );
-  }
+    const start = startedAt ?? Date.now();
+    const id = window.setInterval(() => setElapsed(Date.now() - start), 250);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
 
   const finished = job.status === 'completed' || job.status === 'failed';
+  const cancelled = job.error_code === 'USER_CANCELLED';
+  const showCancel = !finished && !cancelling && onCancel !== undefined;
 
   return (
     <div style={wrapperStyle}>
       <div style={headerRow}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <code style={codeStyle}>{job.id}</code>
-          <StatusBadge status={job.status} />
+          <StatusBadge status={job.status} cancelled={cancelled} />
         </div>
-        <div style={{ fontSize: 11, color: colors.textMuted, fontFamily: fonts.mono }}>
-          {finished
-            ? `${(elapsed / 1000).toFixed(1)}s · ${job.attempt_count} attempt${job.attempt_count === 1 ? '' : 's'}`
-            : `polling · ${(elapsed / 1000).toFixed(1)}s`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, fontFamily: fonts.mono }}>
+            {finished
+              ? `${(elapsed / 1000).toFixed(1)}s · ${job.attempt_count} attempt${job.attempt_count === 1 ? '' : 's'}`
+              : `polling · ${(elapsed / 1000).toFixed(1)}s`}
+          </div>
+          {showCancel && (
+            <button
+              type="button"
+              onClick={async () => {
+                setCancelling(true);
+                try {
+                  await onCancel!();
+                } finally {
+                  // The poller will flip the badge to USER_CANCELLED
+                  // within a tick or two; we just unblock the local
+                  // button state.
+                  setCancelling(false);
+                }
+              }}
+              style={cancelButtonStyle}
+              aria-label="Cancel job"
+            >
+              Cancel
+            </button>
+          )}
+          {cancelling && (
+            <span
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: colors.textMuted,
+              }}
+            >
+              cancelling…
+            </span>
+          )}
         </div>
       </div>
 
@@ -198,15 +193,31 @@ export function IngestStreamLog({ jobId, onComplete }: Props) {
 
       {job.error_code && (
         <div style={errorBox}>
-          <strong style={{ color: colors.danger }}>{job.error_code}</strong>:{' '}
-          <span style={{ color: colors.textSecondary }}>{job.error_message}</span>
+          <strong style={{ color: cancelled ? colors.textSecondary : colors.danger }}>
+            {job.error_code}
+          </strong>
+          : <span style={{ color: colors.textSecondary }}>{job.error_message}</span>
+        </div>
+      )}
+
+      {pollError && !job.error_code && (
+        <div style={{ ...errorBox, fontSize: 12 }}>
+          <strong style={{ color: colors.danger }}>poll error</strong>:{' '}
+          <span style={{ color: colors.textSecondary }}>{pollError}</span>
         </div>
       )}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: IngestionJob['status'] }) {
+function StatusBadge({
+  status,
+  cancelled,
+}: {
+  status: IngestionJob['status'];
+  cancelled: boolean;
+}) {
+  if (cancelled) return <Badge variant="neutral">cancelled</Badge>;
   const variant: Parameters<typeof Badge>[0]['variant'] =
     status === 'completed'
       ? 'success'
@@ -285,4 +296,18 @@ const errorBox: React.CSSProperties = {
   borderRadius: radii.md,
   fontSize: 12,
   fontFamily: fonts.mono,
+};
+
+const cancelButtonStyle: React.CSSProperties = {
+  background: 'transparent',
+  color: colors.danger,
+  border: `1px solid ${colors.danger}`,
+  borderRadius: radii.sm,
+  padding: '4px 10px',
+  fontSize: 11,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  fontFamily: "'DM Sans', sans-serif",
+  cursor: 'pointer',
+  transition: 'background 120ms ease',
 };

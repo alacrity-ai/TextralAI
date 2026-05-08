@@ -11,6 +11,12 @@ import {
 } from './documents.js';
 import { query, listQueryEvents, getQueryEvent, getQueryResponse } from './query.js';
 import { registerProviderKey, listProviderKeys } from './provider-keys.js';
+import {
+  registerInfraKey,
+  listInfraKeys,
+  testInfraKey,
+  revokeInfraKey,
+} from './infra-keys.js';
 import { listFailingJobs, retryFailingJob } from './ops.js';
 import { listModels } from './models.js';
 
@@ -30,9 +36,14 @@ export const allTools: ToolDef[] = [
   listQueryEvents,
   getQueryEvent,
   getQueryResponse,
-  // provider keys
+  // provider keys (BYOK for embedding/inference/rerank)
   registerProviderKey,
   listProviderKeys,
+  // infra keys (tenant-scoped vector-store credentials — Pinecone today)
+  registerInfraKey,
+  listInfraKeys,
+  testInfraKey,
+  revokeInfraKey,
   // operations
   listFailingJobs,
   retryFailingJob,

@@ -21,6 +21,9 @@ import type {
   QueryEvent,
   ProviderKey,
   ProviderKeyCreate,
+  InfraKey,
+  InfraKeyCreate,
+  InfraKeyTestResponse,
   Chunk,
   UploadResponse,
   FinalizeResponse,
@@ -228,6 +231,24 @@ export class TextralClient {
         'POST',
         `/v1/provider-keys/${encodeURIComponent(id)}/test`,
       ),
+  };
+
+  // ── infra keys ──────────────────────────────────────────────────
+  // Tenant-scoped vector-store credentials (Pinecone today). Sister
+  // to providerKeys; see contracts/src/infra-key.ts for the
+  // resolution-semantics distinction.
+  infraKeys = {
+    list: (): Promise<{ data: InfraKey[] }> =>
+      this._call<{ data: InfraKey[] }>('GET', '/v1/infra-keys'),
+    create: (body: InfraKeyCreate): Promise<InfraKey> =>
+      this._call<InfraKey>('POST', '/v1/infra-keys', body),
+    test: (id: string): Promise<InfraKeyTestResponse> =>
+      this._call<InfraKeyTestResponse>(
+        'POST',
+        `/v1/infra-keys/${encodeURIComponent(id)}/test`,
+      ),
+    revoke: (id: string): Promise<{ ok: true }> =>
+      this._call<{ ok: true }>('DELETE', `/v1/infra-keys/${encodeURIComponent(id)}`),
   };
 
   // ── admin ───────────────────────────────────────────────────────

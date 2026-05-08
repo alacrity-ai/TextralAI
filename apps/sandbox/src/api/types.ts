@@ -229,6 +229,10 @@ export interface RerankerAudit {
   latency_ms?: number | null;
   fallback_reason?: string | null;
   actionable?: boolean | null;
+  /** Redacted upstream provider message attached when fallback fired
+   *  due to a real provider error. Surfaces user-facing context
+   *  (e.g. "Voyage free tier: 3 RPM + 10K TPM"). */
+  fallback_message?: string | null;
 }
 
 export interface TokenBreakdown {

@@ -57,6 +57,16 @@ export class VoyageRerankProvider extends ProviderHttpClient implements RerankPr
           text: res.text,
         });
         const retryAfter = parseRetryAfter(res.headers.get('retry-after'));
+        // Voyage uses `{detail: "..."}` rather than the OpenAI-shape
+        // `{error: {message: "..."}}`. classifyOpenAIError reads the
+        // OpenAI shape and returns no upstream_message for Voyage.
+        // Fall back to `body.detail` so the audit's fallback_message
+        // surfaces the real reason — most importantly the free-tier
+        // rate-limit notice ("3 RPM + 10K TPM — add a payment method").
+        const voyageDetail = (res.body as { detail?: unknown } | null)?.detail;
+        const upstreamMessage =
+          cls.upstream_message ??
+          (typeof voyageDetail === 'string' ? voyageDetail : undefined);
         return {
           type: cls.type,
           provider: this.name,
@@ -64,7 +74,7 @@ export class VoyageRerankProvider extends ProviderHttpClient implements RerankPr
           status: res.status,
           retry_count: attempt,
           ...(cls.upstream_code ? { upstream_code: cls.upstream_code } : {}),
-          ...(cls.upstream_message ? { safe_upstream_message: redact(cls.upstream_message) } : {}),
+          ...(upstreamMessage ? { safe_upstream_message: redact(upstreamMessage) } : {}),
           ...(retryAfter !== undefined ? { retry_after_ms: retryAfter } : {}),
         };
       },

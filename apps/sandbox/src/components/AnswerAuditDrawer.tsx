@@ -146,6 +146,13 @@ export function AnswerAuditDrawer({ open, onClose, response }: Props) {
               </Badge>
             </Row>
           )}
+          {a.reranker.fallback_message && (
+            <Row label="upstream message">
+              <span style={{ fontSize: 12, fontStyle: 'italic', color: 'inherit' }}>
+                {a.reranker.fallback_message}
+              </span>
+            </Row>
+          )}
         </Section>
 
         <Section title="Models">

@@ -175,6 +175,7 @@ export async function maybeRerank(input: RerankInput): Promise<RerankOutcome> {
 
   // fatal_error or retryable_error → fall back.
   const reason = mapErrorTypeToFallbackReason(result.error.type);
+  const fallbackMessage = result.error.safe_upstream_message ?? null;
   return {
     reordered: fallbackTopK(input.candidates, topN),
     audit: audit(
@@ -184,6 +185,7 @@ export async function maybeRerank(input: RerankInput): Promise<RerankOutcome> {
         top_n: topN,
         latency_ms: Date.now() - start,
         fallback_reason: reason,
+        ...(fallbackMessage ? { fallback_message: fallbackMessage } : {}),
       },
       true,
       false,

@@ -148,6 +148,11 @@ export const RerankerAudit = z.object({
    *  act on (out of quota, missing key) vs a transient blip (timeout,
    *  5xx). Always present when `executed: false`. */
   actionable: z.boolean().nullable().optional(),
+  /** Redacted upstream message attached when rerank fell back to RRF
+   *  due to a provider error. Surfaces the reason humans care about
+   *  (e.g. "Voyage free tier: 3 RPM + 10K TPM — add a payment method")
+   *  in the audit drawer instead of the opaque fallback_reason alone. */
+  fallback_message: z.string().nullable().optional(),
 });
 export type RerankerAudit = z.infer<typeof RerankerAudit>;
 

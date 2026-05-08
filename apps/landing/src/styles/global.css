@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Keyframes ───────────────────────────────────────────────────
+ * Declared at the top level (outside @layer) so they ship in the
+ * compiled CSS unconditionally — Tailwind would otherwise tree-shake
+ * keyframes whose corresponding `animate-*` utility class isn't used
+ * in any markup. The `.hero-enter` cascade and the gradient ribbon /
+ * dot pulse rely on these directly via `animation:` declarations.
+ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+}
+@keyframes ribbon-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
 @font-face {
   font-family: 'Manrope';
   font-style: normal;

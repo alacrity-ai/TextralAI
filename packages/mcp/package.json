@@ -1,6 +1,6 @@
 {
   "name": "@textral/mcp",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": false,
   "type": "module",
   "description": "MCP (Model Context Protocol) server for Textral. Stdio transport; multi-profile addressing; works against Cloudflare and self-host deployments.",

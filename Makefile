@@ -11,7 +11,7 @@ PNPM ?= $(shell test -x /home/leif/.local/share/npm-global/bin/pnpm-active && ec
         migrate-dev migrate-prod migrate-postgres-local migrate-postgres-selfhost \
         seed-dev \
         secret-put-dev secret-put-prod \
-        bootstrap-secrets-dev tail-dev \
+        bootstrap-secrets-dev bootstrap-secrets-prod tail-dev \
         selfhost-up selfhost-down selfhost-logs selfhost-seed-cookbook selfhost-validate \
         sandbox-dev sandbox-build sandbox-typecheck \
         mcp-dev mcp-typecheck mcp-validate
@@ -136,6 +136,31 @@ bootstrap-secrets-dev: ## One-shot: generate + put the 4 Phase-3/4 worker secret
 	@echo ">> Done. Wrote apps/api/.secrets.dev.env (mode 600, gitignored). Source it for seed-dev:"
 	@echo "     set -a; . apps/api/.secrets.dev.env; set +a; make seed-dev"
 	@echo ">> Re-deploy the Worker (make deploy-dev) so the Container picks up the new INTERNAL_HMAC_SECRET."
+
+bootstrap-secrets-prod: ## One-shot: generate + put the 6 prod worker secrets. ROTATES — invalidates any existing prod API keys.
+	@echo "!! This rotates INTERNAL_HMAC_SECRET, AUDIT_HASH_SALT, API_KEY_PEPPER, ADMIN_BOOTSTRAP_TOKEN,"
+	@echo "!! plus sets RATE_LIMIT_IP_SALT and MAILGUN_API_KEY."
+	@echo "!! Existing PROD API keys (hashed with API_KEY_PEPPER) will stop working."
+	@echo "!! Type 'rotate-prod' to continue, anything else to abort:"
+	@read confirm; [ "$$confirm" = "rotate-prod" ] || (echo "aborted." && exit 1)
+	@if [ -z "$$MAILGUN_API_KEY" ]; then echo "ERROR: export MAILGUN_API_KEY before running (read from DO_NOT_COMMIT.md)" >&2; exit 1; fi
+	@HMAC=$$(openssl rand -hex 32); \
+	 SALT=$$(openssl rand -hex 16); \
+	 PEPPER=$$(openssl rand -hex 32); \
+	 BOOTSTRAP=$$(openssl rand -hex 32); \
+	 RLSALT=$$(openssl rand -hex 16); \
+	 cd apps/api && \
+	  printf '%s' "$$HMAC"      | npx wrangler secret put INTERNAL_HMAC_SECRET --env prod && \
+	  printf '%s' "$$SALT"      | npx wrangler secret put AUDIT_HASH_SALT --env prod && \
+	  printf '%s' "$$PEPPER"    | npx wrangler secret put API_KEY_PEPPER --env prod && \
+	  printf '%s' "$$BOOTSTRAP" | npx wrangler secret put ADMIN_BOOTSTRAP_TOKEN --env prod && \
+	  printf '%s' "$$RLSALT"    | npx wrangler secret put RATE_LIMIT_IP_SALT --env prod && \
+	  printf '%s' "$$MAILGUN_API_KEY" | npx wrangler secret put MAILGUN_API_KEY --env prod && \
+	  printf 'INTERNAL_HMAC_SECRET=%s\nAUDIT_HASH_SALT=%s\nAPI_KEY_PEPPER=%s\nADMIN_BOOTSTRAP_TOKEN=%s\nRATE_LIMIT_IP_SALT=%s\n' \
+	    "$$HMAC" "$$SALT" "$$PEPPER" "$$BOOTSTRAP" "$$RLSALT" > .secrets.prod.env && \
+	  chmod 600 .secrets.prod.env
+	@echo ">> Done. Wrote apps/api/.secrets.prod.env (mode 600, gitignored)."
+	@echo ">> Re-deploy the Worker (make deploy-prod) so the Container picks up the new INTERNAL_HMAC_SECRET."
 
 tail-dev: ## Stream live logs from the dev Worker
 	cd apps/api && npx wrangler tail --env dev --format=pretty

@@ -1,0 +1,91 @@
+---
+const pillars = [
+  {
+    icon: 'mcp',
+    accent: 'text-accent-teal',
+    headline: 'MCP-native by default',
+    body:
+      'Your AI agent calls Textral directly — no glue code, no wrappers. One install, multi-profile addressing for stage and prod, every tool surfaced.',
+  },
+  {
+    icon: 'hybrid',
+    accent: 'text-accent-amber',
+    headline: 'Hybrid retrieval, in the box',
+    body:
+      'Dense + BM25 + reranker out of the box. Per-namespace dimension locking catches the silent embedding mismatches other services let you ship into production.',
+  },
+  {
+    icon: 'audit',
+    accent: 'text-accent-magenta',
+    headline: 'Audit-first',
+    body:
+      'Every query is a forensically-replayable event with retrieval lineage, citation integrity, dropped-citation tracking, and per-arm error surfacing.',
+  },
+  {
+    icon: 'deploy',
+    accent: 'text-accent-coral',
+    headline: 'Run it your way',
+    body:
+      'Hosted on Cloudflare, or self-hosted on your own infra. Same packages. Same contracts. No fork, no migration story.',
+  },
+];
+---
+
+<section class="py-20 md:py-24">
+  <div class="container-default">
+    <p
+      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+    >
+      What you get
+    </p>
+
+    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        pillars.map((p) => (
+          <article class="card reveal flex flex-col">
+            <div class={`mb-5 ${p.accent}`}>
+              {p.icon === 'mcp' && (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6" />
+                  <path d="M3 12h12" />
+                  <circle cx="20" cy="12" r="2" />
+                </svg>
+              )}
+              {p.icon === 'hybrid' && (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="6" cy="6" r="3" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="12" cy="18" r="3" />
+                  <path d="M8.5 8 11 16" />
+                  <path d="m15.5 8-2.5 8" />
+                </svg>
+              )}
+              {p.icon === 'audit' && (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <path d="m9 15 2 2 4-4" />
+                </svg>
+              )}
+              {p.icon === 'deploy' && (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M5 12a7 7 0 1 0 14 0 7 7 0 1 0-14 0Z" />
+                  <path d="M12 2v3" />
+                  <path d="M12 19v3" />
+                  <path d="m4.93 4.93 2.12 2.12" />
+                  <path d="m16.95 16.95 2.12 2.12" />
+                  <path d="M2 12h3" />
+                  <path d="M19 12h3" />
+                </svg>
+              )}
+            </div>
+            <h3 class="text-2xl font-semibold text-text-primary">
+              {p.headline}
+            </h3>
+            <p class="mt-3 text-base text-text-secondary">{p.body}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

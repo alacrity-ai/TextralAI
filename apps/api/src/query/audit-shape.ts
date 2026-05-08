@@ -20,6 +20,8 @@ export interface FinalizeAuditArgs {
     dense_count: number;
     sparse_count: number;
     embedding_missing_count: number;
+    dense_error?: string;
+    sparse_error?: string;
   };
   ctx: { included: { chunk_id: string }[]; total_tokens: number };
   embeddingProfile: string;
@@ -73,6 +75,8 @@ export async function finalizeAudit(
     retrieval_status: a.retrieval.retrieval_status,
     dense_candidates_returned: a.retrieval.dense_count,
     sparse_candidates_returned: a.retrieval.sparse_count,
+    ...(a.retrieval.dense_error ? { dense_error: a.retrieval.dense_error } : {}),
+    ...(a.retrieval.sparse_error ? { sparse_error: a.retrieval.sparse_error } : {}),
     embedding_missing_count: a.retrieval.embedding_missing_count,
     candidates_returned: a.retrieval.candidates.length,
     reranker: a.rerankerAudit,

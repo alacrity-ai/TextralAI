@@ -37,6 +37,12 @@ export interface HybridResult {
   dense_count: number;
   sparse_count: number;
   embedding_missing_count: number;
+  /** Set when one arm rejected but the other survived. Populated for
+   *  `sparse_only` / `dense_only` so the audit row records WHY the
+   *  arm dropped — without this, "0 dense candidates" is
+   *  indistinguishable from "Vectorize threw a 4xx". */
+  dense_error?: string;
+  sparse_error?: string;
 }
 
 interface SparseRow {
@@ -76,11 +82,18 @@ export async function runHybridRetrieval(env: Env, args: HybridArgs): Promise<Hy
 
   const denseOk = denseRes.status === 'fulfilled';
   const sparseOk = sparseRes.status === 'fulfilled';
+  const denseErr = extractError(denseRes);
+  const sparseErr = extractError(sparseRes);
+  // Log every single-arm failure to stderr so worker observability
+  // captures it. Without this, "sparse_only" was indistinguishable
+  // from a Vectorize 4xx — the silent-degradation footgun.
+  if (!denseOk) console.error('hybrid.dense_failed:', denseErr);
+  if (!sparseOk) console.error('hybrid.sparse_failed:', sparseErr);
   let retrieval_status: RetrievalStatus;
   if (!denseOk && !sparseOk) {
     throw new TextralError('RETRIEVAL_FAILED', 503, 'Both retrieval arms failed', {
-      dense_error: extractError(denseRes),
-      sparse_error: extractError(sparseRes),
+      dense_error: denseErr,
+      sparse_error: sparseErr,
     });
   } else if (denseOk && sparseOk) {
     retrieval_status = 'full';
@@ -97,6 +110,8 @@ export async function runHybridRetrieval(env: Env, args: HybridArgs): Promise<Hy
       dense_count: 0,
       sparse_count: 0,
       embedding_missing_count: 0,
+      ...(denseErr ? { dense_error: denseErr } : {}),
+      ...(sparseErr ? { sparse_error: sparseErr } : {}),
     };
   }
 
@@ -113,6 +128,8 @@ export async function runHybridRetrieval(env: Env, args: HybridArgs): Promise<Hy
     dense_count: dense.length,
     sparse_count: sparse.length,
     embedding_missing_count: missing,
+    ...(denseErr ? { dense_error: denseErr } : {}),
+    ...(sparseErr ? { sparse_error: sparseErr } : {}),
   };
 }
 

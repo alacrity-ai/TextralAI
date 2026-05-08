@@ -81,23 +81,26 @@ preview_urls = false
 [env.prod.vars]
 ENV = "prod"
 ENABLE_DEBUG_ROUTES = "false"
-ALLOWED_ORIGINS = "https://textral.example.com"
+ALLOWED_ORIGINS = "https://sandbox.textral.alacrity.ai,https://textral.alacrity.ai"
 CF_ACCOUNT_ID = "e2446fe227a630d5dd70c40c33456f1f"
 AI_GATEWAY_ID = "textral-prod"
 AI_GATEWAY_BYPASS = "false"
+# Container → Worker back-channel base URL. Set to the prod custom
+# domain bound to this Worker (api.textral.alacrity.ai).
+WORKER_INTERNAL_URL = "https://api.textral.alacrity.ai"
 # V3 Phase 1 — Qdrant base URL. Self-host Qdrant Cloud URL goes here;
 # secrets (`QDRANT_API_KEY`, `PINECONE_API_KEY`) via `wrangler secret put`.
 QDRANT_URL = ""
 # Phase A — self-service registration. MAILGUN_API_KEY +
 # RATE_LIMIT_IP_SALT are Worker secrets (`wrangler secret put …`).
-# Update TEXTRAL_PUBLIC_BASE to the deployed sandbox URL.
+# TEXTRAL_PUBLIC_BASE points at the prod sandbox.
 MAILGUN_DOMAIN = "mg.alacrity.ai"
-TEXTRAL_PUBLIC_BASE = "https://textral.alacrity.ai"
+TEXTRAL_PUBLIC_BASE = "https://sandbox.textral.alacrity.ai"
 
 [[env.prod.d1_databases]]
 binding = "DB"
 database_name = "textral-prod"
-database_id = "<PASTE_PROD_D1_UUID_HERE>"
+database_id = "34a746c1-cad8-4c0d-ab90-fad0ea3f833c"
 migrations_dir = "migrations/sqlite"
 
 [[env.prod.r2_buckets]]
@@ -123,7 +126,7 @@ index_name = "textral-prod-openai-text-embedding-3-large-1536-cosine"
 
 [[env.prod.kv_namespaces]]
 binding = "CACHE"
-id = "<PASTE_PROD_KV_ID_HERE>"
+id = "1a91cb4408244bc8a5956998534e28d2"
 
 # API_KEY_PEPPER is a Worker secret (set via `wrangler secret put`) for now.
 # See env.dev block for rationale.

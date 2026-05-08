@@ -35,7 +35,6 @@ import {
   resolveVersionIds,
   resolveProviderKeyForQuery,
   resolveRerankProviderKey,
-  defaultDim,
 } from '../query/helpers.js';
 import { finalizeAudit, finalizeFailure } from '../query/audit-shape.js';
 import { encodeSseFrame, SSE_HEADERS } from '../synthesis/streaming.js';
@@ -119,10 +118,28 @@ export async function runStreamingQuery(
     return openErrorStream(qevId, audit, 'No documents available to query.');
   }
 
+  // Honor the namespace-locked embedding dim. See routes/query.ts for
+  // the full rationale — short version: chunks were embedded at
+  // `ns.embedding_dimensions`, the query embedding must match, and
+  // OpenAI's text-embedding-3-large defaults to 3072d when no
+  // `dimensions` arg is forwarded.
+  const lockedDim = ns.embedding_dimensions;
+  if (
+    body.embedding.dimensions !== undefined &&
+    body.embedding.dimensions !== lockedDim
+  ) {
+    throw new TextralError(
+      'BAD_REQUEST',
+      400,
+      `embedding.dimensions=${body.embedding.dimensions} does not match the namespace's locked embedding_dimensions=${lockedDim}. ` +
+        'Omit `embedding.dimensions` to use the namespace lock automatically.',
+    );
+  }
+  const effectiveDim = lockedDim;
   const embeddingProfile = makeEmbeddingProfile(
     body.embedding.provider,
     body.embedding.model,
-    body.embedding.dimensions ?? defaultDim(body.embedding.model),
+    effectiveDim,
   );
   const chunkingProfile = body.chunking.profile;
   for (const vid of versionIds) {
@@ -161,7 +178,9 @@ export async function runStreamingQuery(
     {
       model: body.embedding.model,
       input: [body.query],
-      ...(body.embedding.dimensions ? { dimensions: body.embedding.dimensions } : {}),
+      // Always forward the namespace-locked dim — see lockedDim
+      // construction above.
+      dimensions: effectiveDim,
     },
     embedProvider.options,
   );

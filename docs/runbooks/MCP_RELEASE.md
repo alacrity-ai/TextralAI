@@ -30,6 +30,14 @@ pnpm --filter @textral/mcp build
 
 Each emits to its own `dist/`. The commands fail fast if any package's typecheck regressed.
 
+### 1b. Run tests (HARD GATE — do not skip)
+
+```bash
+pnpm --filter @textral/contracts --filter @textral/sdk --filter @textral/mcp test
+```
+
+This is the only step that catches **eager-throw regressions** like a tool description exceeding the 200-char ceiling enforced in `defineTool`. The build pass-through doesn't catch them; the broken module only fails at first import. Skipping this gate has shipped a broken `mcp` to npm before — the only mitigation is bumping a fresh patch version (npm refuses re-publishes within 72h of unpublishing).
+
 ### 2. Verify tarball contents
 
 ```bash

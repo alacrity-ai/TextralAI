@@ -1,0 +1,199 @@
+---
+type Cell =
+  | { kind: 'check'; note?: string }
+  | { kind: 'cross' }
+  | { kind: 'partial'; note?: string }
+  | { kind: 'minimal' }
+  | { kind: 'text'; value: string };
+
+const rows: { feature: string; textral: Cell; pinecone: Cell; vectara: Cell; openai: Cell }[] = [
+  {
+    feature: 'MCP-native',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'cross' },
+    vectara: { kind: 'cross' },
+    openai: { kind: 'cross' },
+  },
+  {
+    feature: 'Hybrid retrieval (dense + sparse)',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'check' },
+    vectara: { kind: 'check' },
+    openai: { kind: 'partial' },
+  },
+  {
+    feature: 'Reranker in the box',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'check' },
+    vectara: { kind: 'check' },
+    openai: { kind: 'cross' },
+  },
+  {
+    feature: 'Full audit lineage',
+    textral: { kind: 'check', note: 'full' },
+    pinecone: { kind: 'partial' },
+    vectara: { kind: 'partial' },
+    openai: { kind: 'minimal' },
+  },
+  {
+    feature: 'Self-hostable (same packages)',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'cross' },
+    vectara: { kind: 'cross' },
+    openai: { kind: 'cross' },
+  },
+  {
+    feature: 'Multi-tenant API',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'text', value: 'per account' },
+    vectara: { kind: 'text', value: 'per account' },
+    openai: { kind: 'text', value: 'per account' },
+  },
+  {
+    feature: 'Pluggable vector backend',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'text', value: 'locked to Pinecone' },
+    vectara: { kind: 'text', value: 'locked' },
+    openai: { kind: 'text', value: 'locked to OpenAI' },
+  },
+  {
+    feature: 'BYO provider keys',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'partial' },
+    vectara: { kind: 'partial' },
+    openai: { kind: 'cross' },
+  },
+  {
+    feature: 'Open-source SDK + MCP',
+    textral: { kind: 'check' },
+    pinecone: { kind: 'cross' },
+    vectara: { kind: 'cross' },
+    openai: { kind: 'cross' },
+  },
+];
+
+const renderClass = 'px-4 py-3 text-sm';
+---
+
+<section class="py-20 md:py-24">
+  <div class="container-default">
+    <p
+      class="text-center text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary"
+    >
+      How it stacks up
+    </p>
+    <h2
+      class="mx-auto mt-4 max-w-3xl text-center font-display text-3xl font-bold tracking-tight text-text-primary md:text-4xl"
+    >
+      Honestly compared
+    </h2>
+    <p
+      class="mx-auto mt-6 max-w-prose text-center text-base text-text-secondary"
+    >
+      If a competitor matches us on a row, we say so. If we're behind, we
+      don't hide it. Reviewed 2026-05-08.
+    </p>
+
+    <div
+      class="mx-auto mt-12 max-w-5xl overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+    >
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[640px] border-collapse text-left">
+          <thead class="bg-bg-overlay">
+            <tr>
+              <th class={`${renderClass} font-medium text-text-secondary`}>Feature</th>
+              <th
+                class={`${renderClass} bg-accent-teal/10 font-semibold text-accent-teal`}
+              >
+                Textral
+              </th>
+              <th class={`${renderClass} font-medium text-text-secondary`}>
+                Pinecone Assistant
+              </th>
+              <th class={`${renderClass} font-medium text-text-secondary`}>
+                Vectara
+              </th>
+              <th class={`${renderClass} font-medium text-text-secondary`}>
+                OpenAI File Search
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              rows.map((row, i) => (
+                <tr
+                  class={`border-t border-border-subtle ${i % 2 === 0 ? '' : 'bg-bg-base/40'}`}
+                >
+                  <td class={`${renderClass} text-text-primary`}>{row.feature}</td>
+                  {(['textral', 'pinecone', 'vectara', 'openai'] as const).map(
+                    (col) => {
+                      const cell = row[col];
+                      const textralCol = col === 'textral';
+                      return (
+                        <td
+                          class={`${renderClass} ${textralCol ? 'bg-accent-teal/5' : ''}`}
+                        >
+                          {cell.kind === 'check' && (
+                            <span class="inline-flex items-center gap-2 text-accent-success">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Yes">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              {cell.note && <span class="text-xs text-text-tertiary">{cell.note}</span>}
+                            </span>
+                          )}
+                          {cell.kind === 'cross' && (
+                            <span class="text-text-tertiary" aria-label="No">—</span>
+                          )}
+                          {cell.kind === 'partial' && (
+                            <span class="rounded-sm bg-bg-overlay px-2 py-0.5 text-xs text-text-secondary">
+                              partial
+                            </span>
+                          )}
+                          {cell.kind === 'minimal' && (
+                            <span class="rounded-sm bg-bg-overlay px-2 py-0.5 text-xs text-text-tertiary">
+                              minimal
+                            </span>
+                          )}
+                          {cell.kind === 'text' && (
+                            <span class="text-xs text-text-secondary">{cell.value}</span>
+                          )}
+                        </td>
+                      );
+                    },
+                  )}
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="mx-auto mt-6 max-w-prose text-center text-xs text-text-tertiary">
+      "MCP-native" means we ship a maintained MCP server as a first-class
+      npm package, not that the competitor cannot be wrapped. Wrapping any
+      REST API in an MCP server is possible; doing it well is not.
+    </p>
+
+    <figure
+      class="mx-auto mt-16 max-w-5xl overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated"
+    >
+      <img
+        src="/brand/integrations.png"
+        alt="A semantic-fabric diagram with the Textral core node connected to GitHub, Notion, Slack, Google Drive, Confluence, S3, Markdown, PDFs, APIs, PostgreSQL, SharePoint, and the local filesystem."
+        width="1536"
+        height="1024"
+        class="h-auto w-full"
+        loading="lazy"
+        decoding="async"
+      />
+      <figcaption
+        class="border-t border-border-subtle bg-bg-overlay px-5 py-3 text-xs text-text-tertiary"
+      >
+        Sources today: files (PDF, Markdown, plain). Connectors (GitHub,
+        Notion, Slack, Drive, Confluence, S3, SharePoint, Postgres) on the
+        roadmap.
+      </figcaption>
+    </figure>
+  </div>
+</section>

@@ -1,0 +1,90 @@
+---
+const repoUrl = 'https://github.com/alacrity-ai/TextralAI';
+const sandboxUrl = 'https://sandbox.textral.alacrity.ai';
+const docsUrl = 'https://api.textral.alacrity.ai/docs';
+
+const columns = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Sandbox', href: sandboxUrl },
+      { label: 'Docs', href: docsUrl },
+      { label: 'API reference', href: docsUrl },
+      { label: 'Roadmap', href: '#roadmap' },
+    ],
+  },
+  {
+    heading: 'Open Source',
+    links: [
+      { label: 'GitHub', href: repoUrl },
+      { label: '@textral/sdk', href: 'https://www.npmjs.com/package/@textral/sdk' },
+      { label: '@textral/mcp', href: 'https://www.npmjs.com/package/@textral/mcp' },
+      { label: '@textral/contracts', href: 'https://www.npmjs.com/package/@textral/contracts' },
+    ],
+  },
+  {
+    heading: 'Company',
+    links: [
+      { label: 'Alacrity AI', href: 'https://alacrity.ai' },
+      { label: 'Contact', href: 'mailto:hello@alacrity.ai' },
+    ],
+  },
+];
+---
+
+<footer class="border-t border-border-subtle bg-bg-base">
+  <div class="container-wide py-16">
+    <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+      <div>
+        <a href="/" aria-label="Textral home">
+          <img
+            src="/brand/logo_banner.png"
+            alt="Textral"
+            width="944"
+            height="261"
+            class="h-7 w-auto"
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+        <p class="mt-4 max-w-xs text-sm text-text-tertiary">
+          RAG-as-a-service. Hosted, self-hosted, or both. By Alacrity AI.
+        </p>
+      </div>
+
+      {
+        columns.map((col) => (
+          <div>
+            <p class="text-xs font-medium uppercase tracking-[0.04em] text-text-tertiary">
+              {col.heading}
+            </p>
+            <ul class="mt-4 space-y-2.5">
+              {col.links.map((link) => (
+                <li>
+                  <a
+                    href={link.href}
+                    rel="noopener"
+                    class="text-sm text-text-secondary transition-colors hover:text-text-primary"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+
+    <div
+      class="mt-12 flex flex-col gap-4 border-t border-border-subtle pt-8 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p class="text-xs text-text-tertiary">
+        © 2026 Alacrity AI. All rights reserved.
+      </p>
+      <p class="text-xs text-text-tertiary">
+        Built on Cloudflare. Open source, MIT.
+      </p>
+    </div>
+  </div>
+</footer>

@@ -214,10 +214,37 @@ export function Ingest() {
 
   return (
     <div style={pageStyle}>
-      <PageHeader
-        title="Ingest"
-        subtitle={`Drop a markdown or text file into namespace ${active.slug} and watch it stream through fetch / normalize / chunk / embed / index.`}
-      />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: spacing.lg,
+        }}
+      >
+        <PageHeader
+          title="Ingest"
+          subtitle={`Drop a markdown or text file into namespace ${active.slug} and watch it stream through fetch / normalize / chunk / embed / index.`}
+        />
+        <Link
+          to="/ingest/history"
+          style={{
+            marginTop: 12,
+            fontSize: 11,
+            color: colors.textMuted,
+            textDecoration: 'none',
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            fontFamily: "'DM Sans', sans-serif",
+            border: `1px solid ${colors.border}`,
+            borderRadius: 4,
+            padding: '8px 14px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          View ingest history →
+        </Link>
+      </div>
 
       <div
         style={{

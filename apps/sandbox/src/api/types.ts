@@ -56,6 +56,9 @@ export interface Namespace {
   slug: string;
   corpus_profile: string;
   default_embedding_profile: string;
+  /** Hard-locked vector dim. Set at create time, immutable. Every
+   *  ingest into this namespace must embed at this dim. */
+  embedding_dimensions: number;
   default_inference_model: string | null;
   default_prompt_template_id: string | null;
   vector_backend: VectorBackend;
@@ -69,6 +72,9 @@ export interface NamespaceCreate {
   slug: string;
   corpus_profile?: string;
   default_embedding_profile?: string;
+  /** If omitted at create time, the API infers from
+   *  `default_embedding_profile`. Once persisted, cannot change. */
+  embedding_dimensions?: number;
   default_inference_model?: string | null;
   default_prompt_template_id?: string | null;
   vector_backend?: VectorBackend;

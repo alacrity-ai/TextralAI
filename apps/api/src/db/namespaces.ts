@@ -11,6 +11,7 @@ interface NamespaceRow {
   slug: string;
   corpus_profile: string;
   default_embedding_profile: string;
+  embedding_dimensions: number;
   default_inference_model: string | null;
   default_prompt_template_id: string | null;
   vector_backend: 'vectorize' | 'qdrant' | 'pinecone';
@@ -27,6 +28,7 @@ export function rowToNamespace(r: NamespaceRow): Namespace {
     slug: r.slug,
     corpus_profile: r.corpus_profile,
     default_embedding_profile: r.default_embedding_profile,
+    embedding_dimensions: r.embedding_dimensions,
     default_inference_model: r.default_inference_model,
     default_prompt_template_id: r.default_prompt_template_id,
     vector_backend: r.vector_backend,
@@ -88,6 +90,7 @@ export interface InsertNamespaceArgs {
   slug: string;
   corpus_profile: string;
   default_embedding_profile: string;
+  embedding_dimensions: number;
   default_inference_model: string | null;
   default_prompt_template_id: string | null;
   vector_backend: 'vectorize' | 'qdrant' | 'pinecone';
@@ -103,15 +106,17 @@ export async function insertNamespace(
   await db.exec(
     `INSERT INTO namespaces
          (id, tenant_id, slug, corpus_profile, default_embedding_profile,
+          embedding_dimensions,
           default_inference_model, default_prompt_template_id,
           vector_backend, vector_index_name, vector_namespace, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       args.id,
       args.tenant_id,
       args.slug,
       args.corpus_profile,
       args.default_embedding_profile,
+      args.embedding_dimensions,
       args.default_inference_model,
       args.default_prompt_template_id,
       args.vector_backend,
@@ -126,6 +131,7 @@ export async function insertNamespace(
     slug: args.slug,
     corpus_profile: args.corpus_profile,
     default_embedding_profile: args.default_embedding_profile,
+    embedding_dimensions: args.embedding_dimensions,
     default_inference_model: args.default_inference_model,
     default_prompt_template_id: args.default_prompt_template_id,
     vector_backend: args.vector_backend,

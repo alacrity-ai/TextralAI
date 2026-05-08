@@ -107,27 +107,30 @@ export function QueryForm({
     return { ...DEFAULTS, ...initial };
   });
 
-  // When the active namespace changes, prefer the profile it was actually
-  // indexed under (authoritative — sourced from version_indexes server-side).
-  // Fall back to the soft `default_embedding_profile` only when the namespace
-  // has no ingested documents yet.
+  // When the active namespace changes:
+  //   * dim is HARD-LOCKED to `active.embedding_dimensions` (set at
+  //     namespace-create time, immutable). The dim field renders
+  //     read-only below; we still write it onto the form so the
+  //     request payload carries the right value.
+  //   * provider + model prefer what the namespace was actually
+  //     indexed under (authoritative — sourced from version_indexes).
+  //     Fall back to the soft `default_embedding_profile` when no docs
+  //     have been ingested yet.
   useEffect(() => {
     if (!active) return;
     const indexed = active.indexed_profiles?.[0];
-    if (indexed) {
-      setForm((f) => ({
-        ...f,
-        embedding_provider: providerFromName(indexed.embedding_provider, f.embedding_provider),
-        embedding_model: indexed.embedding_model,
-        embedding_dimensions: indexed.embedding_dimensions,
-      }));
-    } else if (active.default_embedding_profile?.includes('text-embedding-3-large')) {
-      setForm((f) => ({
-        ...f,
-        embedding_model: 'text-embedding-3-large',
-        embedding_dimensions: 1536,
-      }));
-    }
+    setForm((f) => ({
+      ...f,
+      embedding_dimensions: active.embedding_dimensions,
+      ...(indexed
+        ? {
+            embedding_provider: providerFromName(indexed.embedding_provider, f.embedding_provider),
+            embedding_model: indexed.embedding_model,
+          }
+        : active.default_embedding_profile?.includes('text-embedding-3-large')
+          ? { embedding_model: 'text-embedding-3-large' }
+          : {}),
+    }));
     if (active.default_inference_model) {
       setForm((f) => ({
         ...f,
@@ -311,12 +314,7 @@ export function QueryForm({
               }));
             }}
           />
-          <Input
-            label="Dimensions"
-            type="number"
-            value={form.embedding_dimensions}
-            onChange={(e) => patch('embedding_dimensions', Number(e.target.value))}
-          />
+          <LockedDimensionField value={form.embedding_dimensions} />
           <ProviderKeySelectField
             label="Key ref"
             value={form.embedding_provider_key_ref}
@@ -610,6 +608,44 @@ function SelectField({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+/** Read-only display of the namespace's locked embedding dim. The
+ *  underlying form field still flows to the request — the UI just
+ *  prevents the user from setting a value that would mismatch the
+ *  namespace and trip EMBEDDING_PROFILE_MISMATCH at the gate. */
+function LockedDimensionField({ value }: { value: number }) {
+  return (
+    <div>
+      <FieldLabel>Dimensions</FieldLabel>
+      <div
+        style={{
+          padding: '11px 14px',
+          background: colors.bgInput,
+          border: `1px solid ${colors.border}`,
+          borderRadius: radii.md,
+          fontSize: 14,
+          fontFamily: fonts.mono,
+          color: colors.textPrimary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>{value}</span>
+        <span
+          style={{
+            fontSize: 9,
+            letterSpacing: '0.18em',
+            color: colors.textMuted,
+            textTransform: 'uppercase',
+          }}
+        >
+          locked
+        </span>
+      </div>
     </div>
   );
 }

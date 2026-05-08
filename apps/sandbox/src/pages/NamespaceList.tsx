@@ -1,19 +1,39 @@
 import { useEffect, useState } from 'react';
 import { useNamespace } from '../context/NamespaceContext.js';
+import { useModelRegistry } from '../context/ModelRegistryContext.js';
 import { api, TextralApiError } from '../api/client.js';
-import type { Namespace, NamespaceCreate, MeResponse, VectorBackend } from '../api/types.js';
+import type {
+  Namespace,
+  NamespaceCreate,
+  MeResponse,
+  ProviderName,
+  VectorBackend,
+} from '../api/types.js';
 import { Card } from '../components/ui/Card.js';
 import { Input } from '../components/ui/Input.js';
 import { Button } from '../components/ui/Button.js';
 import { Badge } from '../components/ui/Badge.js';
 import { EmptyState } from '../components/ui/EmptyState.js';
 import { Spinner } from '../components/ui/Spinner.js';
+import { ModelSelectField } from '../components/ui/ModelSelectField.js';
 import { useToast } from '../context/ToastContext.js';
 import { useConfirm } from '../context/ConfirmContext.js';
 import { colors, fonts, radii, spacing } from '../styles/tokens.js';
 
+/** Compose the namespace's `default_embedding_profile` field from a
+ *  bare model id. The API accepts either form (bare or
+ *  `${provider}-${cleanModel}-${dim}`); we send the bare form so the
+ *  namespace row stores the user-facing model name. Dim is sent as
+ *  the separate `embedding_dimensions` field. */
+function profileFor(provider: ProviderName, modelId: string): string {
+  if (!modelId) return '';
+  if (modelId.startsWith(`${provider}-`)) return modelId;
+  return `${provider}-${modelId}`;
+}
+
 export function NamespaceList() {
   const { list, loading, refresh } = useNamespace();
+  const registry = useModelRegistry();
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [runtime, setRuntime] = useState<'cf' | 'node' | null>(null);
@@ -21,14 +41,18 @@ export function NamespaceList() {
   const [form, setForm] = useState<{
     slug: string;
     corpus_profile: string;
-    default_embedding_profile: string;
+    embedding_provider: ProviderName;
+    embedding_model: string;
+    embedding_dimensions: number;
     vector_backend: VectorBackend;
     vector_index_name: string;
     vector_namespace: string;
   }>({
     slug: '',
     corpus_profile: 'generic',
-    default_embedding_profile: 'openai-text-embedding-3-large',
+    embedding_provider: 'openai',
+    embedding_model: 'text-embedding-3-large',
+    embedding_dimensions: 1536,
     vector_backend: 'qdrant',
     vector_index_name: '',
     vector_namespace: '',
@@ -67,7 +91,8 @@ export function NamespaceList() {
       const body: NamespaceCreate = {
         slug: form.slug,
         corpus_profile: form.corpus_profile,
-        default_embedding_profile: form.default_embedding_profile,
+        default_embedding_profile: profileFor(form.embedding_provider, form.embedding_model),
+        embedding_dimensions: form.embedding_dimensions,
         vector_backend: form.vector_backend,
       };
       if (form.vector_backend !== 'vectorize' && form.vector_index_name.trim()) {
@@ -135,10 +160,38 @@ export function NamespaceList() {
             onChange={(v) => setForm((f) => ({ ...f, corpus_profile: v }))}
             options={['generic', 'narrative', 'legal', 'support_kb']}
           />
-          <Input
-            label="Embedding profile"
-            value={form.default_embedding_profile}
-            onChange={(e) => setForm((f) => ({ ...f, default_embedding_profile: e.target.value }))}
+          <SelectField
+            label="Embedding provider"
+            value={form.embedding_provider}
+            onChange={(v) => setForm((f) => ({ ...f, embedding_provider: v as ProviderName }))}
+            options={['openai', 'cohere', 'voyage', 'workers_ai']}
+          />
+          <ModelSelectField
+            label="Embedding model"
+            value={form.embedding_model}
+            provider={form.embedding_provider}
+            kind="embedding"
+            onChange={(id) => {
+              const known = registry.byId(id);
+              setForm((f) => ({
+                ...f,
+                embedding_model: id,
+                // Auto-fill dim from the model's recommended default
+                // when picking from the registry. Matryoshka models
+                // (text-embedding-3-large) default to native (3072);
+                // operators usually want 1536 to fit Vectorize V2 — the
+                // dim field stays editable for that case.
+                ...(known?.dimensions ? { embedding_dimensions: known.dimensions } : {}),
+              }));
+            }}
+          />
+          <DimensionsField
+            value={form.embedding_dimensions}
+            onChange={(n) => setForm((f) => ({ ...f, embedding_dimensions: n }))}
+            {...(registry.byId(form.embedding_model)?.supported_dimensions
+              ? { supported: registry.byId(form.embedding_model)!.supported_dimensions! }
+              : {})}
+            backend={form.vector_backend}
           />
           <SelectField
             label="Vector backend"
@@ -223,6 +276,7 @@ export function NamespaceList() {
                 <Th>slug</Th>
                 <Th>corpus profile</Th>
                 <Th>embedding profile</Th>
+                <Th>dim</Th>
                 <Th>vector backend</Th>
                 <Th>index / collection / host</Th>
                 <Th>vector namespace</Th>
@@ -239,6 +293,9 @@ export function NamespaceList() {
                   </Td>
                   <Td mono small>
                     {n.default_embedding_profile}
+                  </Td>
+                  <Td mono small>
+                    <Badge variant="info">{n.embedding_dimensions}</Badge>
                   </Td>
                   <Td>
                     <Badge variant={n.vector_backend === 'vectorize' ? 'info' : 'success'}>
@@ -267,6 +324,86 @@ export function NamespaceList() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Dim picker that prefers the model's `supported_dimensions` when
+ *  available (Matryoshka), falls back to a free input otherwise. Hints
+ *  the operator that Vectorize is locked to 1536 today. */
+function DimensionsField({
+  value,
+  onChange,
+  supported,
+  backend,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  supported?: number[];
+  backend: VectorBackend;
+}) {
+  const useDropdown = supported && supported.length > 0;
+  const vectorizeLocked = backend === 'vectorize';
+  const showVectorizeHint = vectorizeLocked && value !== 1536;
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          marginBottom: 7,
+          fontSize: 11,
+          color: colors.textSecondary,
+          fontWeight: 500,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+        }}
+      >
+        Dimensions
+      </label>
+      {useDropdown ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{
+            width: '100%',
+            padding: '11px 14px',
+            background: colors.bgInput,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radii.md,
+            fontSize: 14,
+            fontFamily: "'DM Sans', sans-serif",
+            outline: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          {supported!.map((d) => (
+            <option key={d} value={d} style={{ background: colors.bgElevated }}>
+              {d}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <Input
+          type="number"
+          label=""
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
+      )}
+      <div
+        style={{
+          marginTop: 6,
+          fontSize: 11,
+          color: showVectorizeHint ? colors.danger : colors.textMuted,
+          fontStyle: 'italic',
+          lineHeight: 1.4,
+        }}
+      >
+        {showVectorizeHint
+          ? 'Vectorize backend is locked to 1536 on this deploy.'
+          : 'Locked at namespace-create time. Pick the dim your backing store accepts.'}
+      </div>
     </div>
   );
 }

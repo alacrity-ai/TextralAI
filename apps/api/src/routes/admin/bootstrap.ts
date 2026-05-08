@@ -96,12 +96,14 @@ bootstrapRoute.openapi(bootstrap, async (c) => {
 
   let ns = await getNamespaceBySlug(c.env.db, tenantId, data.namespace_slug);
   if (!ns) {
+    const dims = inferDimensionsFromProfile(data.namespace_default_embedding_profile);
     ns = await insertNamespace(c.env.db, {
       id: newId('ns'),
       tenant_id: tenantId,
       slug: data.namespace_slug,
       corpus_profile: data.namespace_corpus_profile,
       default_embedding_profile: data.namespace_default_embedding_profile,
+      embedding_dimensions: dims,
       default_inference_model: null,
       default_prompt_template_id: null,
       vector_backend: backend,
@@ -115,7 +117,6 @@ bootstrapRoute.openapi(bootstrap, async (c) => {
     // Vectorize backends (Qdrant collection / Pinecone index dims).
     // Mirrors the same call site in `routes/namespaces.ts`.
     if (backend !== 'vectorize') {
-      const dims = inferDimensionsFromProfile(ns.default_embedding_profile);
       const store = c.env.vectors.forBinding({
         backend: ns.vector_backend,
         index_name: ns.vector_index_name,

@@ -271,6 +271,34 @@ describe('documents — ingest dispatch', () => {
     void tenantId;
   });
 
+  it('rejects 400 NAMESPACE_DIMENSION_MISMATCH when ingest dim != ns.embedding_dimensions', async () => {
+    const e = env as unknown as Env;
+    const { rawKey, documentId, versionId } = await seedDocAndVersion(e);
+    // Default seeded namespace has embedding_dimensions=1536 (migration
+    // 0010 default); a 1024-dim ingest is incompatible with the
+    // backing store.
+    const ing = await call(e, 'POST', `/v1/documents/${documentId}/ingest`, rawKey, {
+      version_id: versionId,
+      embedding: {
+        provider: 'openai',
+        model: 'text-embedding-3-large',
+        dimensions: 1024,
+        provider_key_ref: 'prod',
+      },
+    });
+    expect(ing.status).toBe(400);
+    const body = (await ing.json()) as {
+      error: {
+        code: string;
+        message: string;
+        details?: { namespace_dimensions?: number; requested_dimensions?: number };
+      };
+    };
+    expect(body.error.code).toBe('NAMESPACE_DIMENSION_MISMATCH');
+    expect(body.error.details?.namespace_dimensions).toBe(1536);
+    expect(body.error.details?.requested_dimensions).toBe(1024);
+  });
+
   it('returns 409 INGESTION_IN_PROGRESS on a second dispatch while first is pending', async () => {
     const e = env as unknown as Env;
     const { rawKey, documentId, versionId } = await seedDocAndVersion(e);

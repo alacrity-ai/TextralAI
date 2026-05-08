@@ -62,6 +62,27 @@ export async function dispatchIngestion(
   const ns = await getNamespaceById(env.db, tenantId, doc.namespace_id);
   if (!ns) throw new TextralError('NAMESPACE_NOT_FOUND', 404, 'Namespace not found');
 
+  // Hard-lock: the namespace's `embedding_dimensions` was set at create
+  // time and reflects the backing store's actual constraint (Vectorize
+  // index size, Qdrant `vectors.size`, Pinecone index dim). Embedding
+  // at any other dim would silently produce a partial ingest (chunks
+  // marked `missing`) or fail downstream at the vector-store layer
+  // with a confusing 4xx. Reject up front.
+  if (embedding.dimensions !== ns.embedding_dimensions) {
+    throw new TextralError(
+      'NAMESPACE_DIMENSION_MISMATCH',
+      400,
+      `Namespace "${ns.slug}" is locked to ${ns.embedding_dimensions}-dim vectors. ` +
+        `Requested ${embedding.dimensions}-dim. Embed with a profile that produces ` +
+        `${ns.embedding_dimensions}-dim vectors, or create a new namespace.`,
+      {
+        namespace_dimensions: ns.embedding_dimensions,
+        requested_dimensions: embedding.dimensions,
+        namespace_slug: ns.slug,
+      },
+    );
+  }
+
   const embeddingProfile = makeEmbeddingProfile(
     embedding.provider,
     embedding.model,

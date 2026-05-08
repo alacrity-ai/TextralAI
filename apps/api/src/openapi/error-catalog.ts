@@ -51,6 +51,11 @@ export const ERROR_CATALOG: Record<string, ErrorMeta> = {
     when: 'Slug or eval-set name conflict on insert.',
     recovery: 'Pick a different slug/name, or fetch the existing resource.',
   },
+  NAMESPACE_DIMENSION_MISMATCH: {
+    http: 400,
+    when: "Ingest requested an embedding dim different from the namespace's locked `embedding_dimensions`.",
+    recovery: "Embed at the namespace's locked dim, or create a new namespace with the dim you need (locked at create time, immutable).",
+  },
   PROVIDER_KEY_NOT_FOUND: {
     http: 404,
     when: '`provider_key_ref` (label) or `provider_key_id` does not match a registered key.',

@@ -15,6 +15,7 @@ export const ErrorCode = z.enum([
   'TENANT_NOT_FOUND',
   'NAMESPACE_NOT_FOUND',
   'NAMESPACE_ALREADY_EXISTS',
+  'NAMESPACE_DIMENSION_MISMATCH',
   // provider keys (Phase 1.5 / Phase 2.8)
   'PROVIDER_KEY_NOT_FOUND',
   'PROVIDER_KEY_INVALID',

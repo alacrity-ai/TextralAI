@@ -15,21 +15,50 @@ import {
   updateNamespace,
 } from '../db/namespaces.js';
 
-/** Map a known embedding profile name to its dimensionality. Used at
- *  namespace-create time to size Qdrant collections + verify Pinecone
- *  index dims. The contract default `'openai-text-embedding-3-large'`
- *  and the wire-form `'openai-text-embedding-3-large-1536'` both
- *  resolve to 1536 — historical mismatch between contract default
- *  and selector key, accepted for back-compat; orthogonal to V3. */
+/** Map a known embedding profile name to its dimensionality. Used as
+ *  a fallback at namespace-create time when the caller doesn't supply
+ *  `embedding_dimensions` explicitly. Recognizes the historical bare
+ *  names plus any profile string ending in `-<digits>` (the
+ *  `${provider}-${model}-${dim}` form). Defaults to 1536 (the
+ *  Vectorize V2-compatible variant of the OpenAI flagship). */
 export function inferDimensionsFromProfile(profile: string): number {
+  // Bare names locked to a known intended dim.
   if (
-    profile === 'openai-text-embedding-3-large-1536' ||
-    profile === 'openai-text-embedding-3-large'
-  )
+    profile === 'openai-text-embedding-3-large' ||
+    profile === 'openai-text-embedding-3-small' ||
+    profile === 'text-embedding-3-large' ||
+    profile === 'text-embedding-3-small'
+  ) {
     return 1536;
-  if (profile === 'workers-bge-large-en-v1-5-1024') return 1024;
+  }
+  if (
+    profile === 'workers-bge-large-en-v1-5-1024' ||
+    profile === '@cf/baai/bge-large-en-v1.5'
+  ) {
+    return 1024;
+  }
+  if (
+    profile === 'workers-bge-base-en-v1-5-768' ||
+    profile === '@cf/baai/bge-base-en-v1.5'
+  ) {
+    return 768;
+  }
+  // `${provider}-${cleanModel}-${dim}` form — trailing -<digits>
+  // wins over the default. e.g. "openai-text-embedding-3-large-3072".
+  const trailingDim = /-(\d+)$/.exec(profile);
+  if (trailingDim) {
+    const n = Number(trailingDim[1]);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
   return 1536;
 }
+
+/** Vectorize binding's locked dimension on the deployed Worker. The
+ *  binding wraps a single CF Vectorize index whose dim was set at
+ *  index-create time. Today there's one binding (`VECTORIZE_OPENAI_LARGE`,
+ *  1536-dim cosine). Multi-binding support — and thus per-namespace
+ *  Vectorize dims — is a future task. */
+const VECTORIZE_BINDING_DIMENSIONS = 1536;
 
 function validateCorpusProfileOrThrow(name: string): void {
   const known = new Set(listProfiles().map((p) => p.id));
@@ -175,12 +204,33 @@ namespacesRoute.openapi(createRouteDef, async (c) => {
     );
   }
 
+  // Resolve embedding dimensions: explicit caller value wins; otherwise
+  // infer from the embedding profile name. The result becomes the
+  // namespace's hard-locked dim — every ingest into this namespace
+  // must embed at this size.
+  const dimensions =
+    data.embedding_dimensions ??
+    inferDimensionsFromProfile(data.default_embedding_profile);
+
+  // Vectorize backends are constrained to whatever dim the Worker's
+  // bound index supports (today: 1536). Reject early — operators who
+  // need a different dim need a different backend or, eventually,
+  // a different Worker binding.
+  if (data.vector_backend === 'vectorize' && dimensions !== VECTORIZE_BINDING_DIMENSIONS) {
+    throw new TextralError(
+      'BAD_REQUEST',
+      400,
+      `Vectorize backend on this deploy is locked to ${VECTORIZE_BINDING_DIMENSIONS}-dim ` +
+        `vectors (the bound index size). Requested ${dimensions}-dim. ` +
+        `Pick a 1536-dim embedding profile, or use 'qdrant'/'pinecone' for a different dim.`,
+    );
+  }
+
   // Validate the upstream backing store BEFORE the DB write so a
   // failed reachability check doesn't leave a half-created row
   // (the bug surfaced during the Pinecone PE prep run — pre-fix the
   // row was inserted then the env-var-missing check fired afterward,
   // and a retry hit NAMESPACE_ALREADY_EXISTS).
-  const dimensions = inferDimensionsFromProfile(data.default_embedding_profile);
   const store = c.env.vectors.forBinding({
     backend: data.vector_backend,
     index_name: data.vector_index_name ?? null,
@@ -197,6 +247,7 @@ namespacesRoute.openapi(createRouteDef, async (c) => {
     slug: data.slug,
     corpus_profile: data.corpus_profile,
     default_embedding_profile: data.default_embedding_profile,
+    embedding_dimensions: dimensions,
     default_inference_model: data.default_inference_model ?? null,
     default_prompt_template_id: data.default_prompt_template_id ?? null,
     vector_backend: data.vector_backend,

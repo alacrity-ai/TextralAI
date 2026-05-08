@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNamespace } from '../context/NamespaceContext.js';
 import { useModelRegistry } from '../context/ModelRegistryContext.js';
 import { api, apiRaw, TextralApiError } from '../api/client.js';
@@ -70,6 +70,15 @@ export function Ingest() {
   const [err, setErr] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The active namespace's `embedding_dimensions` is the hard-locked
+  // dim every ingest into it must use. Sync the form whenever the
+  // namespace changes — the field is rendered read-only below.
+  useEffect(() => {
+    if (active?.embedding_dimensions) {
+      setForm((f) => ({ ...f, embedding_dimensions: active.embedding_dimensions }));
+    }
+  }, [active?.id, active?.embedding_dimensions]);
 
   function patch<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -304,12 +313,7 @@ export function Ingest() {
               }}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.md }}>
-              <Input
-                label="Dimensions"
-                type="number"
-                value={form.embedding_dimensions}
-                onChange={(e) => patch('embedding_dimensions', Number(e.target.value))}
-              />
+              <LockedDimensionField value={form.embedding_dimensions} />
               <ProviderKeySelectField
                 label="Provider key ref"
                 value={form.embedding_provider_key_ref}
@@ -405,6 +409,67 @@ export function Ingest() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Read-only display of the namespace's locked embedding dim. The
+ *  underlying form field is still updated (via the useEffect) so the
+ *  ingest payload sends the right value, but the UI doesn't let the
+ *  user override it — would just trip NAMESPACE_DIMENSION_MISMATCH. */
+function LockedDimensionField({ value }: { value: number }) {
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          marginBottom: 7,
+          fontSize: 11,
+          color: colors.textSecondary,
+          fontWeight: 500,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+        }}
+      >
+        Dimensions
+      </label>
+      <div
+        style={{
+          padding: '11px 14px',
+          background: colors.bgInput,
+          border: `1px solid ${colors.border}`,
+          borderRadius: radii.md,
+          fontSize: 14,
+          fontFamily: fonts.mono,
+          color: colors.textPrimary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>{value}</span>
+        <span
+          style={{
+            fontSize: 9,
+            letterSpacing: '0.18em',
+            color: colors.textMuted,
+            textTransform: 'uppercase',
+          }}
+        >
+          locked
+        </span>
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          fontSize: 11,
+          color: colors.textMuted,
+          fontStyle: 'italic',
+          lineHeight: 1.4,
+        }}
+      >
+        Set at namespace-create time; every ingest into this namespace must use this dim.
+      </div>
     </div>
   );
 }

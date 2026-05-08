@@ -56,6 +56,12 @@ export const Namespace = z.object({
   slug: NamespaceSlug,
   corpus_profile: z.string(),
   default_embedding_profile: z.string(),
+  /** Hard-locked vector dimension this namespace's backing store
+   *  accepts. Every ingest into this namespace MUST embed at this
+   *  dim; queries do too. Set at create time, immutable. Backed by
+   *  the Vectorize binding's index size / Qdrant collection's
+   *  `vectors.size` / Pinecone index's dim. */
+  embedding_dimensions: z.number().int().positive(),
   default_inference_model: z.string().nullable(),
   default_prompt_template_id: z.string().nullable(),
   vector_backend: VectorBackend,
@@ -90,6 +96,11 @@ export const NamespaceCreate = z.object({
   slug: NamespaceSlug,
   corpus_profile: z.string().default('generic'),
   default_embedding_profile: z.string().default('openai-text-embedding-3-large'),
+  /** Vector dim this namespace will accept. If omitted, derived from
+   *  `default_embedding_profile`. Once persisted, cannot change. For
+   *  Vectorize backends the value MUST match the Worker's bound
+   *  Vectorize index dim (currently 1536). */
+  embedding_dimensions: z.number().int().min(1).max(4096).optional(),
   default_inference_model: z.string().nullable().optional(),
   default_prompt_template_id: z.string().nullable().optional(),
   vector_backend: VectorBackend.default('vectorize'),
@@ -119,13 +130,15 @@ export const NamespaceCreate = z.object({
 export type NamespaceCreate = z.infer<typeof NamespaceCreate>;
 
 // Backend choice is locked at create time. Strip vector_backend +
-// vector_index_name + vector_namespace from the update shape so
-// PATCH /v1/namespaces can never mutate them — preserves the
-// "switch backends → new namespace + re-ingest" contract.
+// vector_index_name + vector_namespace + embedding_dimensions from
+// the update shape so PATCH /v1/namespaces can never mutate them —
+// preserves the "switch backends → new namespace + re-ingest"
+// contract and the dim-immutability invariant.
 export const NamespaceUpdate = NamespaceCreate.partial().omit({
   slug: true,
   vector_backend: true,
   vector_index_name: true,
   vector_namespace: true,
+  embedding_dimensions: true,
 });
 export type NamespaceUpdate = z.infer<typeof NamespaceUpdate>;

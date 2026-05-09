@@ -19,9 +19,9 @@ const tabs = [
     sublabel: '@textral/sdk',
     intro: 'Type-safe client paired with @textral/contracts.',
     lang: 'typescript',
-    code: `import { Client } from "@textral/sdk";
+    code: `import { TextralClient } from "@textral/sdk";
 
-const client = new Client({ profile: "hosted-prod" });
+const client = new TextralClient({ profile: "hosted-prod" });
 
 // Ingest
 await client.documents.ingest({
@@ -36,6 +36,30 @@ const { answer, citations, audit } = await client.query({
   query: "What survived the Library of Alexandria?",
 });`,
     caption: 'audit.query_event_id is your replay handle. Save it next to your logs.',
+  },
+  {
+    id: 'python',
+    label: 'Python',
+    sublabel: 'textral',
+    intro: 'Pydantic-typed client, generated from the same contracts.',
+    lang: 'python',
+    code: `from textral import Client
+
+with Client(profile="hosted-prod") as client:
+    # Ingest
+    client.documents.ingest(
+        namespace="narrative",
+        filename="alexandria.md",
+        content=alexandria_text,
+    )
+
+    # Query with citations
+    r = client.query(
+        namespace="narrative",
+        query="What survived the Library of Alexandria?",
+    )
+    answer, citations, audit = r["answer"], r["citations"], r["audit"]`,
+    caption: 'audit["query_event_id"] is your replay handle. Save it next to your logs.',
   },
   {
     id: 'rest',

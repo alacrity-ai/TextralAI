@@ -29,8 +29,12 @@
 //
 // Both share the underlying `loadProfileFile()` reader.
 
-import { readFile, stat } from 'node:fs/promises';
-import { homedir } from 'node:os';
+// `node:fs/promises` and `node:os` are imported lazily inside the
+// functions that touch the filesystem. Top-level imports break the
+// Workers runtime even when no caller ever hits the file path
+// (e.g. the API Worker boots @textral/sdk transitively, but never
+// reads ~/.textral/profiles.toml). Workers tolerates `node:path` via
+// nodejs_compat, so that one stays at top level.
 import { join } from 'node:path';
 import { parse } from 'smol-toml';
 
@@ -50,9 +54,24 @@ const FILE_NAME = 'profiles.toml';
 /** Returns the resolved Textral config directory.
  *  - `TEXTRAL_CONFIG_DIR` env var takes precedence (useful for CI /
  *    sandboxed test envs).
- *  - Otherwise `${homedir()}/.textral`. */
+ *  - Otherwise `${HOME}/.textral` (Unix) or `${USERPROFILE}/.textral`
+ *    (Windows). We avoid `node:os` so the package's module-load
+ *    succeeds in Cloudflare Workers (where the SDK is imported
+ *    transitively but never reads the filesystem). */
 export function configDir(): string {
-  return process.env.TEXTRAL_CONFIG_DIR ?? join(homedir(), '.textral');
+  if (process.env.TEXTRAL_CONFIG_DIR) {
+    return process.env.TEXTRAL_CONFIG_DIR;
+  }
+  const home = process.env.HOME ?? process.env.USERPROFILE;
+  if (!home) {
+    throw new Error(
+      'Cannot resolve Textral config dir: neither TEXTRAL_CONFIG_DIR ' +
+        'nor HOME/USERPROFILE is set. In Cloudflare Workers / browser ' +
+        'environments, set TEXTRAL_CONFIG_DIR or pass {baseUrl, apiKey} ' +
+        'directly to the SDK constructor.',
+    );
+  }
+  return join(home, '.textral');
 }
 
 export function configPath(): string {
@@ -64,6 +83,10 @@ export function configPath(): string {
  *  fails). Throws on parse error or schema-level invalidity (missing
  *  `base_url` / `api_key` on a profile). */
 export async function loadProfileFile(): Promise<ProfileFile | null> {
+  // Lazy import — keeps the Worker bundle bootable for callers
+  // that never hit the filesystem path (the API Worker boots
+  // @textral/sdk transitively but never resolves a profile).
+  const { readFile, stat } = await import('node:fs/promises');
   const path = configPath();
   let raw: string;
   try {

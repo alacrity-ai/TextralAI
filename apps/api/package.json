@@ -5,13 +5,18 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
+    "predev": "tsx scripts/build-sdk-readmes.ts",
     "dev": "wrangler dev --env dev",
+    "predeploy:dev": "tsx scripts/build-sdk-readmes.ts",
     "deploy:dev": "wrangler deploy --env dev",
+    "predeploy:prod": "tsx scripts/build-sdk-readmes.ts",
     "deploy:prod": "wrangler deploy --env prod",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
+    "pretest": "tsx scripts/build-sdk-readmes.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:node": "tsx scripts/build-sdk-readmes.ts",
     "test:node": "vitest run --config vitest.node.config.ts",
     "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
     "build:node": "rm -rf dist && esbuild src/runtime/node/index.ts src/runtime/node/workers/ingest-consumer.ts --bundle --platform=node --target=node24 --format=esm --outbase=src --outdir=dist --out-extension:.js=.mjs --banner:js='import { createRequire as __nrq } from \"node:module\"; const require = __nrq(import.meta.url);' && esbuild scripts/migrate-postgres.ts --bundle --platform=node --target=node24 --format=esm --outbase=scripts --outdir=dist/scripts --out-extension:.js=.mjs --banner:js='import { createRequire as __nrq } from \"node:module\"; const require = __nrq(import.meta.url);'"

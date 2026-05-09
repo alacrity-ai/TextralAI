@@ -55,6 +55,11 @@ const TAG_GROUPS = [
   { name: 'Operations', tags: ['Admin'] },
   { name: 'Tenancy & keys', tags: ['Tenancy', 'API Keys'] },
   { name: 'Agent integration', tags: ['MCP'] },
+  // Prose-only SDK pages. Each tag has a description (the README,
+  // transcluded at build time via apps/api/src/openapi/sdk-pages.ts)
+  // but no attached operations; Scalar renders these as top-level
+  // sidebar pages.
+  { name: 'SDKs', tags: ['SDK · Node', 'SDK · Python'] },
 ];
 
 // OperationIds that should never appear in public docs. They live on
@@ -123,6 +128,10 @@ function applySpecExtensions(
           return 'Reference & Debug';
         case 'Tenancy':
           return 'Tenancy (admin)';
+        case 'SDK · Node':
+          return 'Node SDK';
+        case 'SDK · Python':
+          return 'Python SDK';
         default:
           return undefined;
       }

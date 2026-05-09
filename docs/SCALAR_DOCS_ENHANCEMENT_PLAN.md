@@ -361,6 +361,14 @@ file to update; no markdown sprinkled across 50 routes.
 **Future:** when a real `@textral/sdk` ships, demote the raw
 `fetch` sample and add an SDK sample.
 
+**[2026-05-08 update — done.]** `@textral/sdk@0.2.0` and `textral
+==0.2.0` (Python) are live; the raw-`fetch` and raw-`requests`
+tabs have been replaced by idiomatic SDK calls. Curl tab kept
+as the no-deps option. Implementation: see
+[`docs/development/sdks/SDK_PUBLIC_DOCUMENTATION_IMPLEMENTATION.md`](development/sdks/SDK_PUBLIC_DOCUMENTATION_IMPLEMENTATION.md).
+The "SDKs" tag group + per-SDK pages (transcluded from package
+READMEs at build time) are also live.
+
 ---
 
 ## 11. Authentication & Try-It UX

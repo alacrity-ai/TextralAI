@@ -165,4 +165,84 @@ describe('Phase D5 — docs regression', () => {
     expect(missing, `enum codes missing from ERROR_CATALOG: ${missing.join(', ')}`).toEqual([]);
     expect(orphan, `ERROR_CATALOG has codes not in enum: ${orphan.join(', ')}`).toEqual([]);
   });
+
+  // ── SDK documentation surface (Phase: SDK_PUBLIC_DOCUMENTATION) ──
+
+  it('every flagship operation ships SDK tabs (curl + Node + Python)', async () => {
+    const spec = await fetchSpec();
+    const offenders: string[] = [];
+    for (const k of FLAGSHIP_OPERATION_KEYS) {
+      const op = spec.paths?.[k.path]?.[k.method];
+      const samples = (op?.['x-codeSamples'] ?? []) as { lang?: string; label?: string }[];
+      const langs = new Set(samples.map((s) => s.lang));
+      if (!langs.has('shell')) offenders.push(`${k.method.toUpperCase()} ${k.path} missing curl tab`);
+      // JS label must reference either `@textral/sdk` (canonical) or
+      // `Node SDK` (helper-style label like
+      // "Node SDK — bulkIngestOrchestrate"). Python label must
+      // reference either `textral` or `Python SDK`. Catches a tab
+      // that's still labeled "TypeScript (fetch)" or similar.
+      const jsLabel = samples.find((s) => s.lang === 'js')?.label ?? '';
+      const pyLabel = samples.find((s) => s.lang === 'python')?.label ?? '';
+      if (!jsLabel.includes('@textral/sdk') && !jsLabel.includes('Node SDK')) {
+        offenders.push(`${k.method.toUpperCase()} ${k.path} JS tab not SDK-labeled (got: ${jsLabel || '(none)'})`);
+      }
+      if (!pyLabel.includes('textral') && !pyLabel.includes('Python SDK')) {
+        offenders.push(`${k.method.toUpperCase()} ${k.path} Python tab not SDK-labeled (got: ${pyLabel || '(none)'})`);
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  it('SDK code samples actually import the SDK packages', async () => {
+    const spec = await fetchSpec();
+    const offenders: string[] = [];
+    for (const k of FLAGSHIP_OPERATION_KEYS) {
+      const op = spec.paths?.[k.path]?.[k.method];
+      const samples = (op?.['x-codeSamples'] ?? []) as { lang?: string; source?: string }[];
+      const node = samples.find((s) => s.lang === 'js')?.source ?? '';
+      const python = samples.find((s) => s.lang === 'python')?.source ?? '';
+      if (!node.includes("from '@textral/sdk'") && !node.includes('@textral/sdk')) {
+        offenders.push(`${k.method.toUpperCase()} ${k.path} Node sample doesn't import @textral/sdk`);
+      }
+      if (!python.includes('from textral')) {
+        offenders.push(`${k.method.toUpperCase()} ${k.path} Python sample doesn't import from textral`);
+      }
+    }
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  it('SDK · Node tag exists with README content + version footer', async () => {
+    const spec = await fetchSpec();
+    const tag = (spec.tags ?? []).find((t) => t.name === 'SDK · Node');
+    expect(tag, 'SDK · Node tag missing').toBeDefined();
+    const desc = tag?.description ?? '';
+    expect(desc).toContain('# @textral/sdk');
+    expect(desc).toContain('## Quick start');
+    expect(desc).toContain('## Streaming');
+    expect(desc).toContain('## Retry & backoff');
+    expect(desc).toContain('npm install @textral/sdk');
+    expect(desc).toMatch(/Current version: \*\*`@textral\/sdk@\d+\.\d+\.\d+`\*\*/);
+    expect(desc).not.toMatch(/^## License\b/m);
+  });
+
+  it('SDK · Python tag exists with README content + version footer', async () => {
+    const spec = await fetchSpec();
+    const tag = (spec.tags ?? []).find((t) => t.name === 'SDK · Python');
+    expect(tag, 'SDK · Python tag missing').toBeDefined();
+    const desc = tag?.description ?? '';
+    expect(desc).toContain('# textral');
+    expect(desc).toContain('## Quick start');
+    expect(desc).toContain('AsyncClient');
+    expect(desc).toContain('pip install textral');
+    expect(desc).toMatch(/Current version: \*\*`textral@\d+\.\d+\.\d+`\*\*/);
+    expect(desc).not.toMatch(/^## License\b/m);
+  });
+
+  it('SDKs tag group is in the sidebar after Agent integration', async () => {
+    const spec = await fetchSpec();
+    const groups = spec['x-tagGroups'] ?? [];
+    const sdkGroup = groups.find((g) => g.name === 'SDKs');
+    expect(sdkGroup, 'SDKs tag group missing').toBeDefined();
+    expect(sdkGroup?.tags).toEqual(['SDK · Node', 'SDK · Python']);
+  });
 });

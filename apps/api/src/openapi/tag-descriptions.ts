@@ -1,6 +1,14 @@
 // Per-tag landing-section markdown rendered above each tag's
 // operation list in Scalar. Per docs/SCALAR_DOCS_ENHANCEMENT_PLAN.md
 // §8. Each block ~150-250 words.
+//
+// The two `SDK · *` tags don't have operations attached; they're
+// prose-only pages. Scalar renders a tag with a description and no
+// operations as a top-level page in the sidebar — the tag-group
+// `SDKs` in routes/docs.ts pulls them into the sidebar at the right
+// spot. See docs/development/sdks/SDK_PUBLIC_DOCUMENTATION.md.
+
+import { nodeSdkPage, pythonSdkPage } from './sdk-pages.js';
 
 export const TAG_DESCRIPTIONS: Record<string, string> = {
   // ── Get started ────────────────────────────────────────────────────
@@ -236,7 +244,12 @@ truth is the version row in D1.
 
 Documents that are no longer needed can be soft-deleted via
 \`DELETE /v1/documents/{id}\` — chunks are kept (audit) but the
-document is removed from query results.`,
+document is removed from query results.
+
+**See also:** \`client.documents.*\` (typed wrappers for the
+register → upload → finalize → ingest dance) and
+\`client.documents.iterateChunks(...)\` in the
+[Node SDK](#tag/sdk-node) / [Python SDK](#tag/sdk-python).`,
 
   'Bulk Ingest': `**Bulk Ingest** is the multi-file companion to the
 single-file ingest path. One manifest, one shared embedding +
@@ -269,7 +282,12 @@ same embedding provider/model/dimensions, chunking profile, and
 provider-key reference. Heterogeneous corpora submit two jobs.
 
 See [BULK_UPLOADS_DESIGN.md](https://github.com/alacrity-ai/TextralAI/blob/main/docs/development/bulk_ingest/BULK_UPLOADS_DESIGN.md)
-for the full design.`,
+for the full design.
+
+**See also:** \`bulkIngestOrchestrate(...)\` (Node) /
+\`bulk_ingest_orchestrate(...)\` (Python) — one helper drives the
+manifest → parallel uploads → finalize → poll dance, with progress
+callbacks. [Node SDK](#tag/sdk-node) / [Python SDK](#tag/sdk-python).`,
 
   Chunks: `**Chunks** are the retrievable units inside a document
 version. Ingestion's chunk + embed stages produce them; retrieval and
@@ -328,7 +346,11 @@ existing job id (no duplicate jobs per \`(version_id, mode)\`).
 
 **Failure → DLQ:** after \`attempt_count >= 3\`, the job is
 dead-lettered. Recovery via \`POST /v1/ingestion-jobs/{id}/retry\`
-(admin scope; see Operations).`,
+(admin scope; see Operations).
+
+**See also:** \`client.documents.ingest(...)\` and
+\`client.ingestionJobs.get(...)\` poll loops in the
+[Node SDK](#tag/sdk-node) / [Python SDK](#tag/sdk-python).`,
 
   Query: `\`POST /v1/query\` runs the full retrieval-and-synthesis
 pipeline against a namespace and returns a citation-grounded
@@ -489,7 +511,11 @@ shape. Beyond the basics (latency, tokens):
   on, \`top_k_dense/sparse=20\`.
 - **Programmatic JSON consumer** — structured output, schema
   with all fields required, \`citations\` field present.
-- **Interactive UX** — \`?stream=sse\` + \`gpt-4o-mini\` for low TTFB.`,
+- **Interactive UX** — \`?stream=sse\` + \`gpt-4o-mini\` for low TTFB.
+
+**See also:** \`client.query(...)\` (sync) and \`client.query.stream(...)\`
+(SSE async iterator) in the [Node SDK](#tag/sdk-node) /
+[Python SDK](#tag/sdk-python).`,
 
   Eval: `Per-namespace **golden sets** for regression evaluation.
 Each set holds a list of questions; each question can have an
@@ -615,6 +641,10 @@ OpenAPI), so individual tools/prompts/resources don't appear in
 this reference. See **docs/mcp/QUICKSTART.md** for client setup,
 the full tool list, the profile config, the workflow prompts, and
 the audit configuration.`,
+
+  // ── SDKs (prose-only pages) ────────────────────────────────────────
+  'SDK · Node': nodeSdkPage(),
+  'SDK · Python': pythonSdkPage(),
 };
 
 /** Convenience: the tags we want a description for, in display order

@@ -45,6 +45,22 @@ at create time and transparent to the query path;
 \`audit.candidates_returned\` and the rest of the audit shape are
 identical across backends.
 
+## SDKs
+
+Typed clients for both ecosystems, sharing the same wire contract:
+
+\`\`\`bash
+npm install @textral/sdk     # Node / TypeScript
+pip install textral           # Python
+\`\`\`
+
+Both ship retry/backoff with the idempotent-POST allowlist, async
+streaming, cursor-pagination iterators, a one-call bulk-ingest
+orchestrator, and \`~/.textral/profiles.toml\` resolution. See
+**[Node SDK](#tag/sdk-node)** / **[Python SDK](#tag/sdk-python)**
+for the full surface, or use the curl tab on every operation
+below if you want zero deps.
+
 ## 5-minute quickstart
 
 You'll need a Textral API key (your workspace admin or operator

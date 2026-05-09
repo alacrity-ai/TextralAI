@@ -1,25 +1,24 @@
 {
-  "name": "@textral/sdk",
+  "name": "@textral/profiles",
   "version": "0.2.0",
   "private": false,
   "type": "module",
-  "description": "TypeScript REST client for the Textral RAG API. Pairs with @textral/contracts.",
+  "description": "Shared `~/.textral/profiles.toml` resolver. Used by @textral/sdk, @textral/mcp, and any future Node tool that addresses Textral by profile name.",
   "license": "MIT",
   "author": "Alacrity AI",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alacrity-ai/TextralAI.git",
-    "directory": "packages/sdk"
+    "directory": "packages/profiles"
   },
-  "homepage": "https://github.com/alacrity-ai/TextralAI/tree/main/packages/sdk#readme",
+  "homepage": "https://github.com/alacrity-ai/TextralAI/tree/main/packages/profiles#readme",
   "bugs": {
     "url": "https://github.com/alacrity-ai/TextralAI/issues"
   },
   "keywords": [
     "textral",
-    "sdk",
-    "rag",
-    "rest-client"
+    "profiles",
+    "config"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -39,15 +38,13 @@
     "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run",
-    "examples-typecheck": "tsc -p examples/tsconfig.json"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@textral/contracts": "workspace:^0.1.0",
-    "@textral/profiles": "workspace:^0.2.0",
-    "zod": "^3.23.8"
+    "smol-toml": "^1.3.1"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "typescript": "^5.6.0",
     "vitest": "~3.2.4"
   },

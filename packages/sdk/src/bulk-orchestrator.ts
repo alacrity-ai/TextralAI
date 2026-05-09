@@ -5,12 +5,17 @@
 // poll so the Sandbox UI can render live state.
 
 import type {
-  BulkConfig,
+  BulkConfig as BulkConfigSchema,
   BulkJobStatus,
   BulkOnExisting,
   BulkSubmitResponse,
 } from '@textral/contracts';
+import type { z } from 'zod';
 import type { TextralClient } from './client.js';
+
+// Use the input type so callers can omit fields that have `.default(...)`
+// values (chunking.boundary_depth, etc.); the server applies defaults.
+type BulkConfigInput = z.input<typeof BulkConfigSchema>;
 
 export interface BulkOrchestrateFile {
   filename: string;
@@ -24,7 +29,7 @@ export interface BulkOrchestrateFile {
 
 export interface BulkOrchestrateInput {
   namespace: string;
-  config: BulkConfig;
+  config: BulkConfigInput;
   files: BulkOrchestrateFile[];
   on_existing?: BulkOnExisting;
   /** Default true (SDK + MCP). Set false in the Sandbox so the user

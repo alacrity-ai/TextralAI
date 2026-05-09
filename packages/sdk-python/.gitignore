@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build
+dist/
+build/
+*.egg
+.tsc-out/
+
+# Codegen staging
+codegen/schemas/
+
+# Editor
+.vscode/
+.idea/

@@ -35,7 +35,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && pnpm run build:schemas",
+    "build:schemas": "tsx scripts/build-json-schema.ts",
     "prepublishOnly": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
@@ -46,8 +47,10 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0",
-    "vitest": "~3.2.4"
+    "vitest": "~3.2.4",
+    "zod-to-json-schema": "^3.25.0"
   },
   "engines": {
     "node": ">=22"

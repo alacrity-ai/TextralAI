@@ -266,3 +266,66 @@ describe('configPath', () => {
     expect(configPath()).toBe(join(tmp, 'profiles.toml'));
   });
 });
+
+// ── Cross-language parity ─────────────────────────────────────────
+//
+// These assertions are mirrored in
+//   packages/sdk-python/tests/test_parity.py
+// against the same fixture file content. If you change either side,
+// keep both in sync — that's the whole point of profiles.toml: one
+// file, two SDKs, identical semantics.
+describe('parity (cross-language)', () => {
+  // Fixture content lives at:
+  //   - packages/profiles/test/fixtures/profiles.toml
+  //   - packages/sdk-python/tests/fixtures/profiles.toml
+  // Both files have the same content; we inline-write here so the
+  // test owns the lifecycle (chmod 600 etc.) of its copy.
+  const PARITY_FIXTURE = `default = "prod"
+
+[profiles.dev]
+base_url = "https://dev.example/api"
+api_key = "dev-fixture-key"
+
+[profiles.staging]
+base_url = "https://staging.example/api"
+api_key = "staging-fixture-key"
+
+[profiles.prod]
+base_url = "https://api.example.com"
+api_key = "prod-fixture-key"
+`;
+
+  beforeEach(() => writeProfilesToml(PARITY_FIXTURE));
+
+  it('resolves to prod via default field', async () => {
+    const p = await resolveProfile();
+    expect(p.name).toBe('prod');
+    expect(p.base_url).toBe('https://api.example.com');
+    expect(p.api_key).toBe('prod-fixture-key');
+  });
+
+  it('resolves named dev', async () => {
+    const p = await resolveProfile({ name: 'dev' });
+    expect(p.name).toBe('dev');
+    expect(p.base_url).toBe('https://dev.example/api');
+    expect(p.api_key).toBe('dev-fixture-key');
+  });
+
+  it('TEXTRAL_PROFILE env overrides default', async () => {
+    process.env.TEXTRAL_PROFILE = 'staging';
+    const p = await resolveProfile();
+    expect(p.name).toBe('staging');
+    expect(p.base_url).toBe('https://staging.example/api');
+  });
+
+  it('explicit baseUrl + apiKey overrides everything', async () => {
+    process.env.TEXTRAL_PROFILE = 'staging';
+    const p = await resolveProfile({
+      baseUrl: 'https://override.example',
+      apiKey: 'override-key',
+    });
+    expect(p.name).toBe('_explicit');
+    expect(p.base_url).toBe('https://override.example');
+    expect(p.api_key).toBe('override-key');
+  });
+});

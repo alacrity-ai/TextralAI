@@ -1,0 +1,19 @@
+# Cross-language fixture for profile-resolver tests. The Node and
+# Python SDKs both consume this file with their respective resolvers
+# and assert the same outputs. Keep in sync with
+# packages/profiles/tests/fixtures/profiles.toml — both sides
+# resolve this file identically.
+
+default = "prod"
+
+[profiles.dev]
+base_url = "https://dev.example/api"
+api_key = "dev-fixture-key"
+
+[profiles.staging]
+base_url = "https://staging.example/api"
+api_key = "staging-fixture-key"
+
+[profiles.prod]
+base_url = "https://api.example.com"
+api_key = "prod-fixture-key"
